@@ -1,0 +1,9 @@
+{
+    "files.associations": {
+        "lexer.h": "c",
+        "parser.h": "c",
+        "ast.h": "c",
+        "logger.h": "c",
+        "token.h": "c"
+    }
+}

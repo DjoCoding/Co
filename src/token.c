@@ -17,6 +17,7 @@ const char *token_kind_cstr[] = {
     "/",
     "=",
     "return",
+    ":",
     "end"    
 };
 

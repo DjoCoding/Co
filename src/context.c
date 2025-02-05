@@ -153,6 +153,13 @@ void gcontext_pushvar(CodeGeneratorContext *this, ContextVariable var) {
         gcontext_push(this);
     }
 
+    ContextVariable *v = context_findvar(gcontext_tos(this), var.name);
+    if(v) {
+        //FIXME: raise error
+        // variable already declared
+        abort();
+    }
+
     context_pushvar(gcontext_tos(this), var);
 }
 

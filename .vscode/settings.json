@@ -4,6 +4,9 @@
         "parser.h": "c",
         "ast.h": "c",
         "logger.h": "c",
-        "token.h": "c"
+        "token.h": "c",
+        "assert.h": "c",
+        "cmath": "c",
+        "stdlib.h": "c"
     }
 }

@@ -39,7 +39,7 @@ ContextVariable *context_findvar(Context *this, SV varname);
 Parameter *context_findparam(Context *this, SV paramname);
 
 CodeGeneratorContext *gcontext();
-void gcontext_push();
+void gcontext_push(CodeGeneratorContext *this);
 ContextFunction *gcontext_findfunc(CodeGeneratorContext *this, SV funcname);
 ContextVariable *gcontext_findvar(CodeGeneratorContext *this, SV varname);
 Parameter *gcontext_findparam(CodeGeneratorContext *this, SV paramname);

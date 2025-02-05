@@ -23,6 +23,7 @@ typedef enum {
     TOKEN_KIND_SLASH,
     TOKEN_KIND_EQUAL,
     TOKEN_KIND_RETURN,
+    TOKEN_KIND_COLON,
     TOKEN_KIND_END
 } TokenKind;    
 

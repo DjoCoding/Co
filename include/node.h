@@ -22,7 +22,8 @@ typedef struct {
 } Body;
 
 typedef enum {
-    TYPE_INT = 0,
+    PRE_DEFINED_TYPE_VOID = 0,
+    PRE_DEFINED_TYPE_INT,
     PRE_DEFINED_TYPE_COUNT
 } PreDefinedType;  
 
@@ -56,6 +57,7 @@ typedef struct {
     SV name;
     ARRAY_OF(Parameter) params;
     Body body;
+    Type rettype;
 } FunctionDeclaration;
 
 typedef struct {
@@ -77,7 +79,8 @@ typedef enum {
     OPERATION_ADD,
     OPERATION_SUB,
     OPERATION_MUL,
-    OPERATION_DIV
+    OPERATION_DIV,
+    OPERATIONS_COUNT,
 } Operation;
 
 typedef struct {
@@ -138,5 +141,8 @@ Expression *expras_binop(BinOpExpression binop);
 Expression *expras_integer(int integer);
 Expression *expras_funccall(FunctionCall funccall);
 Expression *expras_var(Variable var);
+
+
+Type typeas_predef(PreDefinedType predef);
 
 #endif

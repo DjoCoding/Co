@@ -22,8 +22,9 @@ TokenKindValueObject pre_defined_tokens[] = {
     { TOKEN_KIND_STAR, "*" },
     { TOKEN_KIND_SLASH, "/" },
     { TOKEN_KIND_EQUAL, "=" },
+    { TOKEN_KIND_COLON, ":" },
     { TOKEN_KIND_FN, "fn" }, 
-    { TOKEN_KIND_RETURN, "return" }
+    { TOKEN_KIND_RETURN, "return" },
 };
 
 Lexer *lexer(SV source) {

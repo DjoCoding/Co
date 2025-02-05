@@ -5,30 +5,6 @@
 
 #define INDENT "\t"
 
-typedef struct {
-    Operation op;
-    const char *value;
-} OperationStringMapper;    
-
-const OperationStringMapper opstrmapper[] = {
-    { OPERATION_ADD,  "+" },
-    { OPERATION_SUB, "-" },
-    { OPERATION_MUL, "*" },
-    { OPERATION_DIV, "/" }
-};
-
-const char *mapoptostr(Operation op) {
-    for(size_t i = 0; i < LENGTH(opstrmapper); ++i) {
-        OperationStringMapper current = opstrmapper[i];
-        if(op == current.op) { 
-            return current.value;
-        }
-    }
-
-    //FIXME: error 
-    assert(false && "operation logging not implemented yet");
-}
-
 void log_node(Node *n, size_t indent);
 void log_funccall(FunctionCall funccall, size_t indent);
 
@@ -131,6 +107,9 @@ void log_funcdecl(FunctionDeclaration funcddecl, size_t indent) {
     printf(" ");
     printf(SV_FMT, SV_UNWRAP(funcddecl.name));
     log_params(funcddecl.params);
+    printf(":");
+    printf(" ");
+    log_type(funcddecl.rettype);
     printf(" ");
     log_body(funcddecl.body, indent + 1);
 }

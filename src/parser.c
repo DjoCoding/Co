@@ -6,7 +6,8 @@
 #include "malloc.h"
 
 const PreDefinedTypeMap predeftypes[PRE_DEFINED_TYPE_COUNT] = {
-    { .type = TYPE_INT, .type_as_cstr = "int" },
+    { .type = PRE_DEFINED_TYPE_INT, .type_as_cstr = "int" },
+    { .type = PRE_DEFINED_TYPE_VOID, .type_as_cstr = "void" }
 };
 
 
@@ -52,12 +53,7 @@ Type parse_type(Parser *this) {
         PreDefinedTypeMap current = predeftypes[i];
         if(svcmp(svc((char* )current.type_as_cstr), t.value)) { 
             padvance(this);
-            return (Type) {
-                .kind = TYPE_KIND_PRE_DEFINED,
-                .as = (TypeAs) {
-                    .predef = current.type
-                }
-            };
+            return typeas_predef(current.type);
         }
     }
 
@@ -302,6 +298,14 @@ FunctionDeclaration parse_function_declaration(Parser *this) {
     
     ARRAY_OF(Parameter) params = parse_parameters(this);
     funcdecl.params = params;
+
+    if(!pexpect(this, TOKEN_KIND_COLON)) {
+        funcdecl.rettype = typeas_predef(PRE_DEFINED_TYPE_VOID);
+    } else {
+        padvance(this);
+        Type rettype = parse_type(this);
+        funcdecl.rettype = rettype;
+    }
 
     if(!pexpect(this, TOKEN_KIND_OPEN_CURLY)) {
         // for now just make it return error, but later fix this to make it return an expression directly

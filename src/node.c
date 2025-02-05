@@ -102,3 +102,12 @@ Expression *expras_var(Variable var) {
         }
     );
 }
+
+Type typeas_predef(PreDefinedType predef) {
+    return (Type) {
+        .kind = TYPE_KIND_PRE_DEFINED,
+        .as = {
+            .predef = predef
+        }
+    };
+}

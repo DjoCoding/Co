@@ -2,6 +2,7 @@
 #define LOGGER_H
 
 #include "ast.h"
+#include "shared.h"
 
 void log_ast(AST *a);
 

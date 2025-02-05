@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "logger.h"
+#include "code.h"
 
 char *fcontent(const char *filepath) {
     FILE *f = fopen(filepath, "r");
@@ -35,11 +36,16 @@ int main(void) {
     {
         Lexer *l = lexer(svc(source));
         ARRAY_OF(Token) tokens = lex(l);
-        print_tokens(tokens);
+        // print_tokens(tokens);
+        printf("[LEXING] passed\n");
 
         Parser *p = parser(tokens);
         AST *a = parse(p);
-        log_ast(a);
+        // log_ast(a);
+        printf("[PARSING] passed\n");
+
+        CodeGenerator *c = code(a);
+        generate(c);
     }
 
     free(source);

@@ -1,14 +1,10 @@
-int add(int a, int b) {
-	return (a + b);
-}
-
-int sub(int a, int b) {
-	return (a - b);
-}
-
 int main(void) {
-	int a = add(1, 2);
-	int b = sub(2, 1);
-	return (a - b);
+	for(int i = 0; (i < 10); ) {
+		int a = i;
+		i = (i + 1);
+		if((i == 9)) {
+			return i;
+		}
+	}
 }
 

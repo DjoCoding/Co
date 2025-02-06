@@ -2,5 +2,8 @@ INCLUDE = ./include
 SRC = ./src
 CC = cc
 
-main: $(SRC)/* $(INCLUDE)/*
-	$(CC) main.c -o main -ggdb2 -Wall -I$(INCLUDE) $(SRC)/*.c
+build: $(SRC)/* $(INCLUDE)/*
+	$(CC) main.c -o ./co -ggdb2 -Wall -I$(INCLUDE) $(SRC)/*.c
+
+run: build 
+	./co main.co -l -p -c -o file.c

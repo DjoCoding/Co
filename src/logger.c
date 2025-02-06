@@ -136,6 +136,53 @@ void log_return(Return ret) {
     log_expr(ret.expr);
 }
 
+void log_if(If iff, size_t indent) {    
+    printf("if");
+    
+    printf(" ");
+    
+    printf("(");
+    log_expr(iff.e);
+    printf(")");
+    
+    printf(" ");
+
+    if(iff.body.count == 1) {
+        return log_node(iff.body.items[0], 0);
+    }
+
+    printf(" ");
+    
+    log_body(iff.body, indent + 1);
+}
+
+void log_for(For forr, size_t indent) {
+    printf("for");
+
+    printf(" ");
+
+    if(forr.v) { 
+        log_vardec(*forr.v);
+    }
+
+    if(forr.e) {
+        printf(";");
+        printf(" ");
+        log_expr(forr.e);
+    }
+
+    printf(" ");
+
+    log_body(forr.body, indent + 1);    
+}
+
+void log_varres(VariableReassignement varres) {
+    printf(SV_FMT, SV_UNWRAP(varres.name));
+    printf(" ");
+    printf("=");
+    printf(" ");
+    log_expr(varres.expr);
+}
 
 void log_node(Node *n, size_t indent) {
     if(n->kind == NODE_KIND_FUNCTION_DECLARATION) {
@@ -154,6 +201,18 @@ void log_node(Node *n, size_t indent) {
         return log_return(n->as.ret);
     }
 
+    if(n->kind == NODE_KIND_IF) {
+        return log_if(n->as.iff, indent);
+    }
+
+    if(n->kind == NODE_KIND_FOR) {
+        return log_for(n->as.forr, indent);
+    }
+
+    if(n->kind == NODE_KIND_VARIABLE_REASSIGNEMENT) {
+        return log_varres(n->as.varres);
+    }
+
     assert(false && "node kind logging not implemented yet");
 }
 
@@ -165,4 +224,15 @@ void log_ast(AST *a) {
         printf("\n");
     }
     printf("\n");
+}
+
+void log_token(Token t) {
+    printf("kind: %s\n", tokenkind_cstr(t.kind));
+}
+
+void log_tokens(ARRAY_OF(Token) tokens) {
+    for(size_t i = 0; i < tokens.count; ++i) {
+        Token t = tokens.items[i];
+        log_token(t);
+    }
 }

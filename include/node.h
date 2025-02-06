@@ -9,7 +9,10 @@ typedef enum {
     NODE_KIND_FUNCTION_DECLARATION,
     NODE_KIND_FUNCTION_CALL,
     NODE_KIND_VARIABLE_DECLARATION,
-    NODE_KIND_RETURN_STATEMENT
+    NODE_KIND_RETURN_STATEMENT, 
+    NODE_KIND_IF,
+    NODE_KIND_FOR,
+    NODE_KIND_VARIABLE_REASSIGNEMENT,
 } NodeKind;
 
 typedef struct Node Node;
@@ -80,6 +83,11 @@ typedef enum {
     OPERATION_SUB,
     OPERATION_MUL,
     OPERATION_DIV,
+    OPERATION_LESS,
+    OPERATION_LESS_OR_EQ,
+    OPERATION_GREATER,
+    OPERATION_GREATER_OR_EQ,
+    OPERATION_EQ,
     OPERATIONS_COUNT,
 } Operation;
 
@@ -113,14 +121,33 @@ typedef struct {
 } VariableDeclaration;
 
 typedef struct {
+    SV name;
+    Expression *expr;
+} VariableReassignement;
+
+typedef struct {
     Expression *expr;
 } Return;
+
+typedef struct {
+    Expression *e;
+    Body body;
+} If;
+
+typedef struct {
+    VariableDeclaration *v; // for the custom initialization
+    Expression *e;          // for the custom end of loop condition
+    Body body;
+} For;
 
 typedef union {
     FunctionDeclaration funcdecl;
     FunctionCall funccall;
     VariableDeclaration vardec;
     Return ret;
+    If iff;
+    For forr;
+    VariableReassignement varres;
 } NodeAs;
 
 struct Node {
@@ -133,7 +160,9 @@ Node *nodeas_funcdecl(FunctionDeclaration funcdecl);
 Node *nodeas_funccall(FunctionCall funccall);
 Node *nodeas_vardec(VariableDeclaration vardec);
 Node *nodeas_return(Expression *ret);
-
+Node *nodeas_if(If iff);
+Node *nodeas_for(For forr);
+Node *nodeas_varres(VariableReassignement varres);
 
 Expression *expr(ExpressionKind kind, ExpressionAs as);
 Expression *expras_string(SV string);
@@ -142,7 +171,8 @@ Expression *expras_integer(int integer);
 Expression *expras_funccall(FunctionCall funccall);
 Expression *expras_var(Variable var);
 
-
 Type typeas_predef(PreDefinedType predef);
+
+VariableDeclaration *vardec(Type type, SV name, Expression *value);
 
 #endif

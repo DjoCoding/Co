@@ -12,6 +12,7 @@ typedef struct {
 } TokenKindValueObject;
 
 TokenKindValueObject pre_defined_tokens[] = {
+    { TOKEN_KIND_SEMI_COLON, ";" },
     { TOKEN_KIND_CLOSE_PAREN, ")" },
     { TOKEN_KIND_OPEN_PAREN, "(" },
     { TOKEN_KIND_OPEN_CURLY, "{" },
@@ -21,9 +22,17 @@ TokenKindValueObject pre_defined_tokens[] = {
     { TOKEN_KIND_MINUS,  "-" },
     { TOKEN_KIND_STAR, "*" },
     { TOKEN_KIND_SLASH, "/" },
+    { TOKEN_KIND_EQ, "==" },
     { TOKEN_KIND_EQUAL, "=" },
+    { TOKEN_KIND_COLON_EQ, ":=" },
     { TOKEN_KIND_COLON, ":" },
+    { TOKEN_KIND_LESS_OR_EQ, "<=" },
+    { TOKEN_KIND_LESS, "<" },
+    { TOKEN_KIND_GREATER_OR_EQ, ">=" },
+    { TOKEN_KIND_GREATER, ">" },
+    { TOKEN_KIND_IF, "if" },
     { TOKEN_KIND_FN, "fn" }, 
+    { TOKEN_KIND_FOR, "for" }, 
     { TOKEN_KIND_RETURN, "return" },
 };
 

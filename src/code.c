@@ -5,6 +5,9 @@
 #include <assert.h>
 #include "malloc.h"
 
+// this macro will get the this object in the current context as not declared dependency
+#define WRITE_CODE(...) fprintf(this->state.f, __VA_ARGS__)
+
 CodeGenerator *code(AST *tree) {
     CodeGenerator *c = alloc(sizeof(CodeGenerator));
     c->tree = tree;
@@ -33,7 +36,7 @@ void code_setfilepath(CodeGenerator *this, const char *filepath) {
 
 void generate_indent(CodeGenerator *this) {
     for(size_t i = 0; i < this->state.indent; ++i) {
-        fprintf(this->state.f, "\t");
+        WRITE_CODE("\t");
     }
 }
 
@@ -45,23 +48,23 @@ void generate_expression_code(CodeGenerator *this, Expression *e);
 void generate_type(CodeGenerator *this, Type type);
 
 void generate_binop_expression_code(CodeGenerator *this, BinOpExpression binop) {
-    fprintf(this->state.f, "(");
+    WRITE_CODE("(");
     generate_expression_code(this, binop.lhs);
-    fprintf(this->state.f, " ");
-    fprintf(this->state.f, "%s", mapoptostr(binop.op));
-    fprintf(this->state.f, " ");
+    WRITE_CODE(" ");
+    WRITE_CODE("%s", mapoptostr(binop.op));
+    WRITE_CODE(" ");
     generate_expression_code(this, binop.rhs);
-    fprintf(this->state.f, ")");
+    WRITE_CODE(")");
 }
 
 void generate_expression_code(CodeGenerator *this, Expression *e) {
     if(e->kind == EXPRESSION_KIND_INTEGER) { 
-        fprintf(this->state.f, "%d", e->as.integer);
+        WRITE_CODE("%d", e->as.integer);
         return;
     }
 
     if(e->kind == EXPRESSION_KIND_STRING) {
-        fprintf(this->state.f, "\"" SV_FMT "\"", SV_UNWRAP(e->as.string));
+        WRITE_CODE("\"" SV_FMT "\"", SV_UNWRAP(e->as.string));
         return;
     }
 
@@ -85,25 +88,25 @@ void generate_funccall_code(CodeGenerator *this, FunctionCall funccall, bool ine
         generate_indent(this);
     }
 
-    fprintf(this->state.f, SV_FMT, SV_UNWRAP(funccall.name));
-    fprintf(this->state.f, "(");
+    WRITE_CODE(SV_FMT, SV_UNWRAP(funccall.name));
+    WRITE_CODE("(");
     for(size_t i = 0; i < funccall.args.count; ++i) {
         Argument arg = funccall.args.items[i];
         generate_expression_code(this, arg.e);
         if(i == funccall.args.count - 1)  { break; }
-        fprintf(this->state.f, ",");
-        fprintf(this->state.f, " ");
+        WRITE_CODE(",");
+        WRITE_CODE(" ");
     }
-    fprintf(this->state.f, ")");
+    WRITE_CODE(")");
 }
 
 void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
     switch(predef) {
         case PRE_DEFINED_TYPE_INT:
-            fprintf(this->state.f, "int");
+            WRITE_CODE("int");
             break;
         case PRE_DEFINED_TYPE_VOID:
-            fprintf(this->state.f, "void");
+            WRITE_CODE("void");
             break;
         default:
         assert(false && "unreachable");
@@ -112,13 +115,13 @@ void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
 
 void generate_funcdecl_param_code(CodeGenerator *this, Parameter p) {
     generate_type(this, p.type);
-    fprintf(this->state.f, " ");
-    fprintf(this->state.f, SV_FMT, SV_UNWRAP(p.name));
+    WRITE_CODE(" ");
+    WRITE_CODE(SV_FMT, SV_UNWRAP(p.name));
 }
 
 void generate_funcdecl_params_code(CodeGenerator *this, ARRAY_OF(Parameter) params) {
     if(params.count == 0) { 
-        fprintf(this->state.f, "void");
+        WRITE_CODE("void");
         return;
     }
 
@@ -126,16 +129,16 @@ void generate_funcdecl_params_code(CodeGenerator *this, ARRAY_OF(Parameter) para
         Parameter p = params.items[i];
         generate_funcdecl_param_code(this, p);
         if(i == params.count - 1) { break; }
-        fprintf(this->state.f, ",");
-        fprintf(this->state.f, " ");
+        WRITE_CODE(",");
+        WRITE_CODE(" ");
     }
 }
 
-void generate_funcdecl_body(CodeGenerator *this, Body body) {
+void generate_body(CodeGenerator *this, Body body) {
     for(size_t i = 0; i < body.count; ++i) {
         Node *n = body.items[i];
         generate_node(this, n, true);
-        fprintf(this->state.f, "\n");
+        WRITE_CODE("\n");
     }
 }
 
@@ -144,42 +147,45 @@ void generate_funcdecl_code(CodeGenerator *this, FunctionDeclaration funcdecl) {
 
     generate_type(this, funcdecl.rettype);
 
-    fprintf(this->state.f, " ");
+    WRITE_CODE(" ");
     
-    fprintf(this->state.f, SV_FMT, SV_UNWRAP(funcdecl.name));
+    WRITE_CODE(SV_FMT, SV_UNWRAP(funcdecl.name));
     
-    fprintf(this->state.f, "(");
+    WRITE_CODE("(");
     generate_funcdecl_params_code(this, funcdecl.params);
-    fprintf(this->state.f, ")");
-    fprintf(this->state.f, " ");
+    WRITE_CODE(")");
+    WRITE_CODE(" ");
     
-    fprintf(this->state.f, "{\n");
+    WRITE_CODE("{\n");
     
     this->state.indent += 1;
-    generate_funcdecl_body(this, funcdecl.body);
+    generate_body(this, funcdecl.body);
     this->state.indent -= 1;
     
-    fprintf(this->state.f, "}\n");
+    WRITE_CODE("}\n");
+}
+
+void generate_vardec_code_inline(CodeGenerator *this, VariableDeclaration vardec) {
+    generate_type(this, vardec.type);
+    
+    WRITE_CODE(" ");
+
+    WRITE_CODE(SV_FMT, SV_UNWRAP(vardec.name));
+
+    if(vardec.expr) {
+        WRITE_CODE(" ");
+        WRITE_CODE("=");
+        WRITE_CODE(" ");
+        generate_expression_code(this, vardec.expr);
+    }
 }
 
 void generate_vardec_code(CodeGenerator *this, VariableDeclaration vardec) {
     generate_indent(this);
-
-    generate_type(this, vardec.type);
-    
-    fprintf(this->state.f, " ");
-
-    fprintf(this->state.f, SV_FMT, SV_UNWRAP(vardec.name));
-
-    if(vardec.expr) {
-        fprintf(this->state.f, " ");
-        fprintf(this->state.f, "=");
-        fprintf(this->state.f, " ");
-        generate_expression_code(this, vardec.expr);
-    }
-
-    fprintf(this->state.f, ";");
+    generate_vardec_code_inline(this, vardec);
+    WRITE_CODE(";");
 }
+
 
 void generate_varvalue(CodeGenerator *this, SV varname) {
     ContextVariable *var = gcontext_findvar(this->gcontext, varname);
@@ -189,7 +195,7 @@ void generate_varvalue(CodeGenerator *this, SV varname) {
         abort();    
     }
 
-    fprintf(this->state.f, SV_FMT, SV_UNWRAP(var->name));
+    WRITE_CODE(SV_FMT, SV_UNWRAP(var->name));
 } 
 
 void generate_funccall(CodeGenerator *this, FunctionCall funccall, bool inexpr) {
@@ -249,16 +255,25 @@ void generate_funcdecl(CodeGenerator *this, FunctionDeclaration funcdecl) {
     gcontext_pop(this->gcontext);
 }
 
-void generate_vardec(CodeGenerator *this, VariableDeclaration vardec) {
-    ContextVariable *var = gcontext_findvar(this->gcontext, vardec.name);
+void crash_on_varfound(CodeGenerator *this, SV name) {
+    ContextVariable *var = gcontext_findvar(this->gcontext, name);
     if(var) {
         //FIXME: error
         // VARIABLE ALREADY EXISTS ERROR
         abort();    
     }
+}
 
+void generate_vardec(CodeGenerator *this, VariableDeclaration vardec) {
+    crash_on_varfound(this, vardec.name);
     gcontext_pushvar(this->gcontext, contextvar(vardec));
     generate_vardec_code(this, vardec);
+}
+
+void generate_vardec_inline(CodeGenerator *this, VariableDeclaration vardec) {
+    crash_on_varfound(this, vardec.name);
+    gcontext_pushvar(this->gcontext, contextvar(vardec));
+    generate_vardec_code_inline(this, vardec);
 }
 
 void generate_type(CodeGenerator *this, Type type) {
@@ -273,10 +288,88 @@ void generate_type(CodeGenerator *this, Type type) {
 
 void generate_return(CodeGenerator *this, Return ret) {
     generate_indent(this);
-    fprintf(this->state.f, "return");
-    fprintf(this->state.f, " ");
+    WRITE_CODE("return");
+    WRITE_CODE(" ");
     generate_expression_code(this, ret.expr);
-    fprintf(this->state.f, ";");
+    WRITE_CODE(";");
+}
+
+void generate_if(CodeGenerator *this, If iff) {
+    generate_indent(this);
+    
+    WRITE_CODE("if");
+    
+    WRITE_CODE("(");
+    generate_expression_code(this, iff.e);
+    WRITE_CODE(")");
+
+    WRITE_CODE(" ");
+
+    WRITE_CODE("{\n");
+
+    // push a new context
+    gcontext_push(this->gcontext);
+
+    this->state.indent += 1;
+    generate_body(this, iff.body);
+    this->state.indent -= 1;
+
+    // pop the context
+    gcontext_pop(this->gcontext);
+
+    generate_indent(this);
+    WRITE_CODE("}");
+}
+
+void generate_for(CodeGenerator *this, For forr) {
+    generate_indent(this);
+    
+    WRITE_CODE("for");
+
+    // push a new context
+    gcontext_push(this->gcontext);
+    
+    WRITE_CODE("(");
+    
+    if(forr.v) {
+        generate_vardec_inline(this, *forr.v);
+    }
+
+    WRITE_CODE(";");
+    WRITE_CODE(" ");
+
+    if(forr.e) {
+        generate_expression_code(this, forr.e);
+    }
+
+    WRITE_CODE(";");
+    WRITE_CODE(" ");
+
+    WRITE_CODE(")");
+
+    WRITE_CODE(" ");
+
+    WRITE_CODE("{\n");
+
+    this->state.indent += 1;
+    generate_body(this, forr.body);
+    this->state.indent -= 1;
+
+    // pop the context
+    gcontext_pop(this->gcontext);
+
+    generate_indent(this);
+    WRITE_CODE("}");
+}
+
+void generate_varres(CodeGenerator *this, VariableReassignement varres) {
+    generate_indent(this);
+    WRITE_CODE(SV_FMT, SV_UNWRAP(varres.name));
+    WRITE_CODE(" ");
+    WRITE_CODE("=");
+    WRITE_CODE(" ");
+    generate_expression_code(this, varres.expr);
+    WRITE_CODE(";");
 }
 
 void generate_node(CodeGenerator *this, Node *n, bool infuncbody) {
@@ -292,10 +385,20 @@ void generate_node(CodeGenerator *this, Node *n, bool infuncbody) {
         return generate_vardec(this, n->as.vardec);
     }
 
-    if(infuncbody) {
-        if(n->kind == NODE_KIND_RETURN_STATEMENT) {
-            return generate_return(this, n->as.ret);
-        }
+    if(n->kind == NODE_KIND_RETURN_STATEMENT) {
+        return generate_return(this, n->as.ret);
+    }
+
+    if(n->kind == NODE_KIND_IF) {
+        return generate_if(this, n->as.iff);
+    }
+
+    if(n->kind == NODE_KIND_FOR) {
+        return generate_for(this, n->as.forr);
+    }
+
+    if(n->kind == NODE_KIND_VARIABLE_REASSIGNEMENT) {
+        return generate_varres(this, n->as.varres);
     }
 
     //FIXME: error 
@@ -310,7 +413,7 @@ void generate(CodeGenerator *this) {
     for(size_t i = 0; i < this->tree->count; ++i) {
         Node *n = this->tree->items[i];
         generate_node(this, n, false);
-        fprintf(this->state.f, "\n");
+        WRITE_CODE("\n");
     }
 }
 

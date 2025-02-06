@@ -51,6 +51,36 @@ Node *nodeas_return(Expression *ret) {
     return n;
 }
 
+Node *nodeas_if(If iff) {
+    Node *n = node(
+        NODE_KIND_IF,
+        (NodeAs) {
+            .iff = iff
+        }
+    );
+    return n;
+}
+
+Node *nodeas_for(For forr) {
+    Node *n = node(
+        NODE_KIND_FOR,
+        (NodeAs) {
+            .forr = forr
+        }
+    );
+    return n;
+}
+
+Node *nodeas_varres(VariableReassignement varres) {
+    Node *n = node(
+        NODE_KIND_VARIABLE_REASSIGNEMENT,
+        (NodeAs) {
+            .varres = varres
+        }
+    );
+    return n;
+}
+
 Expression *expr(ExpressionKind kind, ExpressionAs as) {
     Expression *e = alloc(sizeof(Expression));
     e->kind = kind;
@@ -110,4 +140,12 @@ Type typeas_predef(PreDefinedType predef) {
             .predef = predef
         }
     };
+}
+
+VariableDeclaration *vardec(Type type, SV name, Expression *value) {
+    VariableDeclaration *var = alloc(sizeof(VariableDeclaration));
+    var->type = type;
+    var->name = name;
+    var->expr = value;
+    return var;
 }

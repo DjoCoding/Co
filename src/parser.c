@@ -10,7 +10,6 @@ const PreDefinedTypeMap predeftypes[PRE_DEFINED_TYPE_COUNT] = {
     { .type = PRE_DEFINED_TYPE_VOID, .type_as_cstr = "void" }
 };
 
-
 Parser *parser(ARRAY_OF(Token) tokens) {
     Parser *this = alloc(sizeof(Parser));
     this->tokens = tokens;
@@ -19,6 +18,7 @@ Parser *parser(ARRAY_OF(Token) tokens) {
 }
 
 Token ppeek_ahead(Parser *this, size_t ahead) {
+    if(this->current + ahead >= this->tokens.count) { return TOKEN_NONE; }
     return this->tokens.items[this->current + ahead];
 }
 
@@ -115,7 +115,7 @@ Expression *parse_multiplication(Parser *this) {
     Expression *lhs = parse_primary(this);
 
     while(!pend(this)) {
-        if(!(pexpect(this, TOKEN_KIND_STAR) || pexpect(this, TOKEN_KIND_SLASH))) { 
+        if(!ismultiplication(ppeek(this).kind)) {
             break;
         }
 
@@ -138,7 +138,7 @@ Expression *parse_addition(Parser *this) {
     Expression *lhs = parse_multiplication(this);
 
     while(!pend(this)) {
-        if(!(pexpect(this, TOKEN_KIND_PLUS) || pexpect(this, TOKEN_KIND_MINUS))) { 
+        if(!isaddition(ppeek(this).kind)) {
             break;
         }
 
@@ -157,9 +157,52 @@ Expression *parse_addition(Parser *this) {
     return lhs;
 }
 
+Expression *parse_comparaison(Parser *this) {
+    Expression *lhs = parse_addition(this);
+
+    while(!pend(this)) {
+        if(!iscomparaison(ppeek(this).kind)) {
+            break;
+        }
+
+        Operation op = 0;
+        switch(ppeek(this).kind) {
+            case TOKEN_KIND_LESS:
+                op = OPERATION_LESS;
+                break;
+            case TOKEN_KIND_LESS_OR_EQ:
+                op = OPERATION_LESS_OR_EQ;
+                break;
+            case TOKEN_KIND_GREATER:
+                op = OPERATION_GREATER;
+                break;
+            case TOKEN_KIND_GREATER_OR_EQ:
+                op = OPERATION_GREATER_OR_EQ;
+                break;
+            case TOKEN_KIND_EQ:
+                op = OPERATION_EQ;
+                break;
+            default: 
+                assert(false && "unreachable");
+        }
+
+        padvance(this);
+
+        Expression *rhs = parse_addition(this);
+        BinOpExpression binop = {
+            .lhs = lhs,
+            .rhs = rhs,
+            .op = op
+        };
+        lhs = expras_binop(binop);
+    }
+
+    return lhs;
+}
+
 
 Expression *parse_expression(Parser *this) {
-    return parse_addition(this);
+    return parse_comparaison(this);
 }
 
 //FIXME: fix this to make it parse a parameter (<type> name)
@@ -375,6 +418,130 @@ VariableDeclaration parse_variable_declaration(Parser *this) {
     return vardec;
 }
 
+If parse_if(Parser *this) {
+    if(!pexpect(this, TOKEN_KIND_IF)) {
+        //FIXME: error
+        abort();
+    }
+
+    padvance(this);
+
+    If iff = {0};
+
+    if(!pexpect(this, TOKEN_KIND_OPEN_PAREN)) {
+        //FIXME: error
+        abort();
+    }
+
+    padvance(this);
+    
+    Expression *e = parse_expression(this);
+    iff.e = e;
+
+    if(!pexpect(this, TOKEN_KIND_CLOSE_PAREN)) {
+        //FIXME: error 
+        abort();
+    }
+
+    padvance(this);
+
+    if(!pexpect(this, TOKEN_KIND_OPEN_CURLY)) {
+        Node *n = parse_node(this, true);
+        APPEND(&iff.body, n);
+        return iff;
+    }
+
+    padvance(this);
+
+    Body body = parse_body(this);
+    iff.body = body;
+
+    if(!pexpect(this, TOKEN_KIND_CLOSE_CURLY)) {
+        //FIXME: error 
+        abort();
+    }
+
+    padvance(this);
+
+    return iff;
+}
+
+For parse_for(Parser *this) {
+    if(!pexpect(this, TOKEN_KIND_FOR)) {
+        //FIXME: error
+        abort();
+    }
+
+    padvance(this);
+
+    For forr = {0};
+
+    if(!pexpect(this, TOKEN_KIND_OPEN_CURLY)) {
+        if(ppeek_ahead(this, 2).kind != TOKEN_KIND_EQUAL) {
+            Expression *e = parse_expression(this);
+            forr.v = NULL;
+            forr.e = e;
+        } else {
+            VariableDeclaration var = parse_variable_declaration(this);
+            forr.v = vardec(var.type, var.name, var.expr);
+            
+            if(!(pexpect(this, TOKEN_KIND_SEMI_COLON) || pexpect(this, TOKEN_KIND_OPEN_CURLY))) {
+                //FIXME: error
+                abort();
+            }
+
+            if(pexpect(this, TOKEN_KIND_SEMI_COLON)) {
+                padvance(this);
+                Expression *e = parse_expression(this);
+                forr.e = e;
+            }
+        }
+    }
+
+    if(!pexpect(this, TOKEN_KIND_OPEN_CURLY)) {
+        //FIXME: error 
+        abort();
+    }
+
+    padvance(this);
+
+    Body body = parse_body(this);
+    forr.body = body;
+
+    if(!pexpect(this, TOKEN_KIND_CLOSE_CURLY)) {
+        //FIXME: error
+        abort();
+    }
+
+    padvance(this);
+
+    return forr;
+}
+
+VariableReassignement parse_variable_reassignement(Parser *this) {
+    if(!pexpect(this, TOKEN_KIND_IDENTIFIER)) {
+        // FIXME: error
+        abort();
+    }
+
+    VariableReassignement varres = {0};
+    varres.name = ppeek(this).value;
+
+    padvance(this);
+
+    if(!pexpect(this, TOKEN_KIND_EQUAL)) {
+        //FIXME: error
+        abort();
+    }
+
+    padvance(this);
+
+    Expression *e = parse_expression(this);
+    varres.expr = e;
+
+    return varres;
+}
+
 Node *parse_function_declaration_node(Parser *this) {
     FunctionDeclaration funcdecl = parse_function_declaration(this);
     return nodeas_funcdecl(funcdecl);
@@ -390,31 +557,58 @@ Node *parse_variable_declaration_node(Parser *this) {
     return nodeas_vardec(vardec);
 }
 
+Node *parse_if_node(Parser *this) {
+    If iff = parse_if(this);
+    return nodeas_if(iff);
+}
+
+Node *parse_for_node(Parser *this) {
+    For forr = parse_for(this);
+    return nodeas_for(forr);
+} 
+
+Node *parse_variable_reassignement_node(Parser *this) {
+    VariableReassignement varres = parse_variable_reassignement(this);
+    return nodeas_varres(varres);
+}
+
 
 Node *parse_node(Parser *this, bool infuncbody) {
     Token t = ppeek(this);
     
-    if(t.kind == TOKEN_KIND_FN) {
-        return parse_function_declaration_node(this);
-    }
-
-    if(infuncbody) {
-        if(t.kind == TOKEN_KIND_RETURN) {
-            padvance(this);
-            Expression *e = parse_expression(this);
-            return nodeas_return(e);
+    if(!infuncbody) {
+        if(t.kind == TOKEN_KIND_FN) {
+            return parse_function_declaration_node(this);
         }
     }
 
-    if(ppeek_ahead(this, 1).kind == TOKEN_KIND_OPEN_PAREN) {
-        return parse_function_call_node(this);
+    if(t.kind == TOKEN_KIND_RETURN) {
+        padvance(this);
+        Expression *e = parse_expression(this);
+        return nodeas_return(e);
     }
 
-    for(size_t i = 0; i < LENGTH(predeftypes); ++i) {
-        PreDefinedTypeMap typemapper = predeftypes[i];
-        if(svcmp(svc((char *)typemapper.type_as_cstr), t.value)) {
-            return parse_variable_declaration_node(this);
+    if(t.kind == TOKEN_KIND_IF) {
+        return parse_if_node(this);
+    }
+
+    if(t.kind == TOKEN_KIND_FOR) {
+        return parse_for_node(this);
+    }
+
+    if(t.kind == TOKEN_KIND_IDENTIFIER) {
+        if(ppeek_ahead(this, 1).kind == TOKEN_KIND_OPEN_PAREN) {
+            return parse_function_call_node(this);
         }
+
+        for(size_t i = 0; i < LENGTH(predeftypes); ++i) {
+            PreDefinedTypeMap typemapper = predeftypes[i];
+            if(svcmp(svc((char *)typemapper.type_as_cstr), t.value)) {
+                return parse_variable_declaration_node(this);
+            }
+        }
+        
+        return parse_variable_reassignement_node(this);
     }
 
     //FIXME: error

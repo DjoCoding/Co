@@ -6,7 +6,12 @@ const OperationStringMapper opstrmapper[OPERATIONS_COUNT] = {
     { OPERATION_ADD,  "+" },
     { OPERATION_SUB, "-" },
     { OPERATION_MUL, "*" },
-    { OPERATION_DIV, "/" }
+    { OPERATION_DIV, "/" },
+    { OPERATION_LESS, "<" },
+    { OPERATION_GREATER, ">" },
+    { OPERATION_LESS_OR_EQ, "<=" },
+    { OPERATION_GREATER_OR_EQ, ">=" },
+    { OPERATION_EQ, "==" },
 };
 
 const char *mapoptostr(Operation op) {

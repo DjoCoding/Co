@@ -26,6 +26,9 @@ char *fcontent(const char *filepath) {
 typedef struct {
     const char *source_code_filepath;
     const char *output_filepath;
+    bool loglexer;
+    bool logparser;
+    bool gencode;
 } Configuration;
 
 typedef struct {
@@ -55,7 +58,8 @@ Configuration fparse(FlagsParser *this) {
 
     while(!isend(this)) {
         char *curr = getcurrent(this);
-        if(svcmp(svc(curr), svc("-i"))) {
+        SV s = svc(curr);
+        if(svcmp(s, svc("-i"))) {
             move(this);
             if(isend(this)) {
                 fprintf(stderr, "expected input filepath\n");
@@ -63,14 +67,24 @@ Configuration fparse(FlagsParser *this) {
             }
             config.source_code_filepath = getcurrent(this);
             move(this);
-        } else if(svcmp(svc(curr), svc("-o"))) {
+        } else if(svcmp(s, svc("-o"))) {
             move(this);
             if(isend(this)) {
                 fprintf(stderr, "expected output filepath\n");
                 exit(EXIT_FAILURE);
             }
+            config.gencode = true;
             config.output_filepath = getcurrent(this);
             move(this);
+        } else if(svcmp(s, svc("-l"))) {
+            move(this);
+            config.loglexer = true;
+        } else if(svcmp(s, svc("-p"))) {
+            move(this);
+            config.logparser = true;
+        } else if(svcmp(s, svc("-c"))) {
+            move(this);
+            config.gencode = true;
         } else {
             if(config.source_code_filepath) {
                 fprintf(stderr, "invalid option %s\n", getcurrent(this));
@@ -83,6 +97,7 @@ Configuration fparse(FlagsParser *this) {
 
     return config;
 }
+
 
 int main(int argc, char **argv) {
     FlagsParser fparser = {
@@ -99,7 +114,7 @@ int main(int argc, char **argv) {
     }
 
     // check for output file path
-    if(!global.output_filepath) {
+    if(global.gencode && !global.output_filepath) {
         fprintf(stderr, "output file path required\n");
         exit(EXIT_FAILURE);
     }
@@ -109,14 +124,20 @@ int main(int argc, char **argv) {
     Lexer *l = lexer(svc(source));
     ARRAY_OF(Token) tokens = lex(l);
     printf("[LEXING] passed\n");
+    
+    if(global.loglexer) log_tokens(tokens);
 
     Parser *p = parser(tokens);
     AST *a = parse(p);
     printf("[PARSING] passed\n");
 
-    CodeGenerator *c = code(a);
-    code_setfilepath(c, global.output_filepath);
-    generate(c);
+    if(global.logparser) log_ast(a);
+
+    if(global.gencode) {
+        CodeGenerator *c = code(a);
+        code_setfilepath(c, global.output_filepath);
+        generate(c);
+    }
 
     free(source);
     return 0;

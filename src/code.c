@@ -10,12 +10,30 @@ CodeGenerator *code(AST *tree) {
     c->tree = tree;
     c->gcontext = gcontext();
     c->state = (CodeGeneratorState) {0};
+    c->state.f = stdout;
     return c;
+}
+
+bool code_open_outfile(CodeGenerator *this) {
+    FILE *f = fopen(this->state.filpath, "w");
+    if(!f) { return false; }
+    this->state.f = f;
+    return true;
+}
+
+void code_setfilepath(CodeGenerator *this, const char *filepath) {
+    this->state.filpath = filepath;
+    bool success = code_open_outfile(this);
+    if(!success) {
+        //FIXME: error 
+        // RAISE SYSCALL FAILED ERROR
+        abort();
+    }
 }
 
 void generate_indent(CodeGenerator *this) {
     for(size_t i = 0; i < this->state.indent; ++i) {
-        printf("\t");
+        fprintf(this->state.f, "\t");
     }
 }
 
@@ -27,23 +45,23 @@ void generate_expression_code(CodeGenerator *this, Expression *e);
 void generate_type(CodeGenerator *this, Type type);
 
 void generate_binop_expression_code(CodeGenerator *this, BinOpExpression binop) {
-    printf("(");
+    fprintf(this->state.f, "(");
     generate_expression_code(this, binop.lhs);
-    printf(" ");
-    printf("%s", mapoptostr(binop.op));
-    printf(" ");
+    fprintf(this->state.f, " ");
+    fprintf(this->state.f, "%s", mapoptostr(binop.op));
+    fprintf(this->state.f, " ");
     generate_expression_code(this, binop.rhs);
-    printf(")");
+    fprintf(this->state.f, ")");
 }
 
 void generate_expression_code(CodeGenerator *this, Expression *e) {
     if(e->kind == EXPRESSION_KIND_INTEGER) { 
-        printf("%d", e->as.integer);
+        fprintf(this->state.f, "%d", e->as.integer);
         return;
     }
 
     if(e->kind == EXPRESSION_KIND_STRING) {
-        printf("\"" SV_FMT "\"", SV_UNWRAP(e->as.string));
+        fprintf(this->state.f, "\"" SV_FMT "\"", SV_UNWRAP(e->as.string));
         return;
     }
 
@@ -67,25 +85,25 @@ void generate_funccall_code(CodeGenerator *this, FunctionCall funccall, bool ine
         generate_indent(this);
     }
 
-    printf(SV_FMT, SV_UNWRAP(funccall.name));
-    printf("(");
+    fprintf(this->state.f, SV_FMT, SV_UNWRAP(funccall.name));
+    fprintf(this->state.f, "(");
     for(size_t i = 0; i < funccall.args.count; ++i) {
         Argument arg = funccall.args.items[i];
         generate_expression_code(this, arg.e);
         if(i == funccall.args.count - 1)  { break; }
-        printf(",");
-        printf(" ");
+        fprintf(this->state.f, ",");
+        fprintf(this->state.f, " ");
     }
-    printf(")");
+    fprintf(this->state.f, ")");
 }
 
-void generate_predef_type_code(PreDefinedType predef) {
+void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
     switch(predef) {
         case PRE_DEFINED_TYPE_INT:
-            printf("int");
+            fprintf(this->state.f, "int");
             break;
         case PRE_DEFINED_TYPE_VOID:
-            printf("void");
+            fprintf(this->state.f, "void");
             break;
         default:
         assert(false && "unreachable");
@@ -94,13 +112,13 @@ void generate_predef_type_code(PreDefinedType predef) {
 
 void generate_funcdecl_param_code(CodeGenerator *this, Parameter p) {
     generate_type(this, p.type);
-    printf(" ");
-    printf(SV_FMT, SV_UNWRAP(p.name));
+    fprintf(this->state.f, " ");
+    fprintf(this->state.f, SV_FMT, SV_UNWRAP(p.name));
 }
 
 void generate_funcdecl_params_code(CodeGenerator *this, ARRAY_OF(Parameter) params) {
     if(params.count == 0) { 
-        printf("void");
+        fprintf(this->state.f, "void");
         return;
     }
 
@@ -108,8 +126,8 @@ void generate_funcdecl_params_code(CodeGenerator *this, ARRAY_OF(Parameter) para
         Parameter p = params.items[i];
         generate_funcdecl_param_code(this, p);
         if(i == params.count - 1) { break; }
-        printf(", ");
-        printf(" ");
+        fprintf(this->state.f, ",");
+        fprintf(this->state.f, " ");
     }
 }
 
@@ -117,7 +135,7 @@ void generate_funcdecl_body(CodeGenerator *this, Body body) {
     for(size_t i = 0; i < body.count; ++i) {
         Node *n = body.items[i];
         generate_node(this, n, true);
-        printf("\n");
+        fprintf(this->state.f, "\n");
     }
 }
 
@@ -126,22 +144,22 @@ void generate_funcdecl_code(CodeGenerator *this, FunctionDeclaration funcdecl) {
 
     generate_type(this, funcdecl.rettype);
 
-    printf(" ");
+    fprintf(this->state.f, " ");
     
-    printf(SV_FMT, SV_UNWRAP(funcdecl.name));
+    fprintf(this->state.f, SV_FMT, SV_UNWRAP(funcdecl.name));
     
-    printf("(");
+    fprintf(this->state.f, "(");
     generate_funcdecl_params_code(this, funcdecl.params);
-    printf(")");
-    printf(" ");
+    fprintf(this->state.f, ")");
+    fprintf(this->state.f, " ");
     
-    printf("{\n");
+    fprintf(this->state.f, "{\n");
     
     this->state.indent += 1;
     generate_funcdecl_body(this, funcdecl.body);
     this->state.indent -= 1;
     
-    printf("}\n");
+    fprintf(this->state.f, "}\n");
 }
 
 void generate_vardec_code(CodeGenerator *this, VariableDeclaration vardec) {
@@ -149,18 +167,18 @@ void generate_vardec_code(CodeGenerator *this, VariableDeclaration vardec) {
 
     generate_type(this, vardec.type);
     
-    printf(" ");
+    fprintf(this->state.f, " ");
 
-    printf(SV_FMT, SV_UNWRAP(vardec.name));
+    fprintf(this->state.f, SV_FMT, SV_UNWRAP(vardec.name));
 
     if(vardec.expr) {
-        printf(" ");
-        printf("=");
-        printf(" ");
+        fprintf(this->state.f, " ");
+        fprintf(this->state.f, "=");
+        fprintf(this->state.f, " ");
         generate_expression_code(this, vardec.expr);
     }
 
-    printf(";");
+    fprintf(this->state.f, ";");
 }
 
 void generate_varvalue(CodeGenerator *this, SV varname) {
@@ -171,7 +189,7 @@ void generate_varvalue(CodeGenerator *this, SV varname) {
         abort();    
     }
 
-    printf(SV_FMT, SV_UNWRAP(var->name));
+    fprintf(this->state.f, SV_FMT, SV_UNWRAP(var->name));
 } 
 
 void generate_funccall(CodeGenerator *this, FunctionCall funccall, bool inexpr) {
@@ -245,7 +263,7 @@ void generate_vardec(CodeGenerator *this, VariableDeclaration vardec) {
 
 void generate_type(CodeGenerator *this, Type type) {
     if(type.kind == TYPE_KIND_PRE_DEFINED) {
-        return generate_predef_type_code(type.as.predef);
+        return generate_predef_type_code(this, type.as.predef);
     }
 
     //FIXME: error 
@@ -255,10 +273,10 @@ void generate_type(CodeGenerator *this, Type type) {
 
 void generate_return(CodeGenerator *this, Return ret) {
     generate_indent(this);
-    printf("return");
-    printf(" ");
+    fprintf(this->state.f, "return");
+    fprintf(this->state.f, " ");
     generate_expression_code(this, ret.expr);
-    printf(";");
+    fprintf(this->state.f, ";");
 }
 
 void generate_node(CodeGenerator *this, Node *n, bool infuncbody) {
@@ -292,7 +310,7 @@ void generate(CodeGenerator *this) {
     for(size_t i = 0; i < this->tree->count; ++i) {
         Node *n = this->tree->items[i];
         generate_node(this, n, false);
-        printf("\n");
+        fprintf(this->state.f, "\n");
     }
 }
 

@@ -21,3 +21,8 @@ bool svcmp(SV a, SV b) {
     if(a.count != b.count) { return false; }
     return memcmp(a.content, b.content, a.count) == 0; 
 }
+
+bool svendswith(SV a, SV b) {
+    if(b.count > a.count) { return false; }
+    return svcmp(svsub(a, a.count - b.count, b.count), b);
+}

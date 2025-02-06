@@ -26,5 +26,8 @@ SV svsub(SV s, size_t from, size_t count);
 // compares two string views
 bool svcmp(SV a, SV b);
 
+// check if a ends with b
+bool svendswith(SV a, SV b);
+
 
 #endif

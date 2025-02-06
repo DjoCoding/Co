@@ -2,7 +2,12 @@ fn add(int a, int b): int {
     return a + b
 }
 
+fn sub(int a, int b): int {
+    return a - b
+}
+
 fn main(): int {
     int a = add(1, 2)
-    return a
+    int b = sub(2, 1)
+    return a - b
 }

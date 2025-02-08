@@ -13,6 +13,15 @@
         "utils.h": "c",
         "string": "c",
         "root.h": "c",
-        "costring.h": "c"
-    }
+        "costring.h": "c",
+        "test.C": "cpp",
+        "error.h": "c",
+        "malloc.h": "c",
+        "*.tcc": "c",
+        "cstdio": "c",
+        "cstdlib": "c",
+        "cwchar": "c",
+        "new": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

@@ -26,3 +26,11 @@ bool svendswith(SV a, SV b) {
     if(b.count > a.count) { return false; }
     return svcmp(svsub(a, a.count - b.count, b.count), b);
 }
+
+SV svappend(SV a, SV b) {
+    SV s = a;
+    memcpy(s.content + sizeof(char) * s.count, b.content, b.count);
+    s.count += b.count;
+    s.content[s.count] = 0;
+    return s;
+}

@@ -8,10 +8,9 @@
 #include "code.h"
 #include "utils.h"
 
-
 typedef struct {
-    const char *source_code_filepath;
-    const char *output_filepath;
+    const char *ifile; // input file name
+    const char *ofile; // output file name
     bool loglexer;
     bool logparser;
     bool gencode;
@@ -51,7 +50,7 @@ Configuration fparse(FlagsParser *this) {
                 fprintf(stderr, "expected input filepath\n");
                 exit(EXIT_FAILURE);
             }
-            config.source_code_filepath = getcurrent(this);
+            config.ifile = getcurrent(this);
             move(this);
         } else if(svcmp(s, svc("-o"))) {
             move(this);
@@ -60,7 +59,7 @@ Configuration fparse(FlagsParser *this) {
                 exit(EXIT_FAILURE);
             }
             config.gencode = true;
-            config.output_filepath = getcurrent(this);
+            config.ofile = getcurrent(this);
             move(this);
         } else if(svcmp(s, svc("-l"))) {
             move(this);
@@ -72,11 +71,11 @@ Configuration fparse(FlagsParser *this) {
             move(this);
             config.gencode = true;
         } else {
-            if(config.source_code_filepath) {
+            if(config.ifile) {
                 fprintf(stderr, "invalid option %s\n", getcurrent(this));
                 exit(EXIT_FAILURE);
             }
-            config.source_code_filepath = getcurrent(this);
+            config.ifile = getcurrent(this);
             move(this);
         }
     }
@@ -94,37 +93,41 @@ int main(int argc, char **argv) {
     Configuration global = fparse(&fparser);
     
     // check for input file path
-    if(!global.source_code_filepath) {
+    if(!global.ifile) {
         fprintf(stderr, "input file path required\n");
         exit(EXIT_FAILURE);
     }
 
     // check for output file path
-    if(global.gencode && !global.output_filepath) {
+    if(global.gencode && !global.ofile) {
         fprintf(stderr, "output file path required\n");
         exit(EXIT_FAILURE);
     }
 
-    char *source = fcontent((const char *)global.source_code_filepath);
+    // getting source code
+    char *source = fcontent((const char *)global.ifile);
 
+    // lexing
     Lexer *l = lexer(svc(source));
+    lexerofile(l, global.ifile);
     ARRAY_OF(Token) tokens = lex(l);
-    printf("[LEXING] passed\n");
-    
     if(global.loglexer) log_tokens(tokens);
+    
 
+    // parsing
     Parser *p = parser(tokens);
     AST *a = parse(p);
-    printf("[PARSING] passed\n");
-
     if(global.logparser) log_ast(a);
 
+
+    // generating code
     if(global.gencode) {
         CodeGenerator *c = code(a);
-        code_setup(c, global.output_filepath);
+        code_setup(c, global.ofile);
         generate(c);
     }
 
+    // cleanup
     free(source);
     return 0;
 }

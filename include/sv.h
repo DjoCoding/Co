@@ -29,5 +29,8 @@ bool svcmp(SV a, SV b);
 // check if a ends with b
 bool svendswith(SV a, SV b);
 
+// append b to a (assuming a length can hold both)
+SV svappend(SV a, SV b);
+
 
 #endif

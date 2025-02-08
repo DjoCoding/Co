@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include "malloc.h"
+#include "coerror.h"
 
 typedef struct {
     TokenKind kind;
@@ -40,7 +41,26 @@ Lexer *lexer(SV source) {
     Lexer *this = alloc(sizeof(Lexer));
     this->source = source;
     this->current = 0;
+    this->filename = SV_NULL;
+    this->line = 1;
+    this->offset = 1;
+    this->currentok = TOKEN_NONE;
     return this;
+}
+
+void lexerofile(Lexer *this, const char *filename) {
+    this->filename = svc((char *)filename);
+}
+
+LexerError lexerror(ErrorCode code, Lexer *this) {
+    return (LexerError) {
+        .code = code,
+        .current = this->current,
+        .filename = this->filename,
+        .line = this->line,
+        .offset = this->offset,
+        .lasttok = this->currentok,
+    };
 }
 
 char *lpeekp(Lexer *this) {
@@ -51,19 +71,36 @@ char lpeek(Lexer *this) {
     return *lpeekp(this);
 }
 
-void ladvance_ahead(Lexer *this, size_t ahead) {
-    this->current += ahead;
-}
-
 void ladvance(Lexer *this) {
+    char c = lpeek(this);
+
+    switch(c) {
+        case '\n': 
+            this->line += 1;
+            this->offset = 1;
+            break;
+        case '\t':
+            this->offset += 4;
+            break;
+        default:
+            this->offset += 1;
+    }
+
     ++this->current;
 }
+
+void ladvance_ahead(Lexer *this, size_t ahead) {
+    for(size_t i = 0; i < ahead; ++i) {
+        ladvance(this);
+    }
+}
+
 
 bool lend(Lexer *this) {
     return this->current >= this->source.count;
 }
 
-Token ltoken(Lexer *this) {
+Token trylexpredef(Lexer *this) {
     for(size_t i = 0; i < LENGTH(pre_defined_tokens); ++i) {
         // get the string view from the current pre defined token
         SV current = svc((char *)pre_defined_tokens[i].value);
@@ -71,10 +108,15 @@ Token ltoken(Lexer *this) {
         // compare the string view value with the sub string view from the source code of the same length
         if(svcmp(current, svsub(this->source, this->current, current.count))) {
             ladvance_ahead(this, current.count);
-            return token(current, pre_defined_tokens[i].kind);
+            this->currentok = token(current, pre_defined_tokens[i].kind);
+            return this->currentok;
         }
     }
 
+    return TOKEN_NONE;
+}
+
+Token trylexnumber(Lexer *this) {
     if(isdigit(lpeek(this))) {
         //FIXME: fix this by making this an independant function that lexes and checks for errors
         size_t size = 0;
@@ -84,9 +126,14 @@ Token ltoken(Lexer *this) {
             ++size;
             ladvance(this);
         }
-        return token(sv(start, size), TOKEN_KIND_INTEGER);
+        this->currentok = token(sv(start, size), TOKEN_KIND_INTEGER);
+        return this->currentok;
     }
 
+    return TOKEN_NONE;
+}
+
+Token trylexstring(Lexer *this) {
     if(lpeek(this) == '\"') {
         ladvance(this);
         size_t size = 0;
@@ -97,15 +144,26 @@ Token ltoken(Lexer *this) {
             ladvance(this);
         }
         
-        if(lpeek(this) != '\"') { 
-            //FIXME: raise error 
-            abort();
+        if(lpeek(this) != '\"') {
+            this->currentok = token(sv(start, size), TOKEN_KIND_INVALID);
+            throw(
+                error(
+                    LEXER, 
+                    errfromlexer(lexerror(INVALID_STRING, this))
+                )
+            );
+            return TOKEN_NONE;
         }
 
         ladvance(this);
-        return token(size == 0 ? SV_NULL : sv(start, size), TOKEN_KIND_STRING);
+        this->currentok = token(size == 0 ? SV_NULL : sv(start, size), TOKEN_KIND_STRING);
+        return this->currentok;
     }
 
+    return TOKEN_NONE;
+}
+
+Token trylexidentifier(Lexer *this) {
     if(isalpha(lpeek(this))) {
         size_t size = 0;
         char *start = lpeekp(this);
@@ -114,10 +172,38 @@ Token ltoken(Lexer *this) {
             ++size; 
             ladvance(this); 
         }
-        return token(sv(start, size), TOKEN_KIND_IDENTIFIER);
+        this->currentok = token(sv(start, size), TOKEN_KIND_IDENTIFIER);
+        return this->currentok;
     }
 
-    assert(false && "undefined token");
+    return TOKEN_NONE;
+}
+
+Token ltoken(Lexer *this) {
+    Token tok = TOKEN_NONE;
+
+    tok = trylexpredef(this);
+    if(tok.kind != TOKEN_KIND_NONE) { return tok; }
+
+    tok = trylexnumber(this);
+    if(tok.kind != TOKEN_KIND_NONE) { return tok; }
+    
+    tok = trylexstring(this);
+    if(tok.kind != TOKEN_KIND_NONE) { return tok; }
+    
+    tok = trylexidentifier(this);
+    if(tok.kind != TOKEN_KIND_NONE) { return tok; }
+    
+    this->currentok = token(sv(lpeekp(this), 1), TOKEN_KIND_INVALID);
+    throw(
+        error(
+            LEXER, 
+            errfromlexer(lexerror(INVALID_TOKEN, this))
+        )
+    );
+
+    // to by-pass the gcc warning
+    return TOKEN_NONE;
 }   
 
 ARRAY_OF(Token) lex(Lexer *this) {

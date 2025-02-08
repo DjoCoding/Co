@@ -170,6 +170,24 @@ void gcontext_pop(CodeGeneratorContext *this) {
     this->ctxs.count -= 1;
 }
 
+Include include(SV name, bool isstd) {
+    return (Include) {
+        .name = name,
+        .isstd = isstd
+    };
+} 
 
+Include *gcontext_findinclude(CodeGeneratorContext *this, SV name) {
+    for(size_t i = 0; i < this->includes.count; ++i) {
+        Include *inc = &this->includes.items[i];
+        if(svcmp(name, inc->name)) { return inc; }
+    }
+    return NULL;
+}
 
+void gcontext_pushinclude(CodeGeneratorContext *this, Include inc) {
+    Include *isfound = gcontext_findinclude(this, inc.name);
+    if(isfound) { return; }
+    APPEND(&this->includes, inc);
+}
 

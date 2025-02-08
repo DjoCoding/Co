@@ -23,8 +23,15 @@ typedef struct {
 } Context;
 DEF_ARRAY(Context);
 
+typedef struct {
+    SV name;
+    bool isstd;
+} Include;
+DEF_ARRAY(Include);
+
 typedef struct { 
     ARRAY_OF(Context) ctxs;
+    ARRAY_OF(Include) includes;
 } CodeGeneratorContext;
 
 Context context();
@@ -38,15 +45,18 @@ ContextFunction *context_findfunc(Context *this, SV funcname);
 ContextVariable *context_findvar(Context *this, SV varname);
 Parameter *context_findparam(Context *this, SV paramname);
 
+Include include(SV name, bool isstd);
+
 CodeGeneratorContext *gcontext();
 void gcontext_push(CodeGeneratorContext *this);
 ContextFunction *gcontext_findfunc(CodeGeneratorContext *this, SV funcname);
 ContextVariable *gcontext_findvar(CodeGeneratorContext *this, SV varname);
+Include *gcontext_findinclude(CodeGeneratorContext *this, SV name);
 Parameter *gcontext_findparam(CodeGeneratorContext *this, SV paramname);
 void gcontext_push(CodeGeneratorContext *this);
 void gcontext_pushfunc(CodeGeneratorContext *this, ContextFunction func);
 void gcontext_pushvar(CodeGeneratorContext *this, ContextVariable var);
+void gcontext_pushinclude(CodeGeneratorContext *this, Include inc);
 void gcontext_pop(CodeGeneratorContext *this);
-
 
 #endif

@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
+#include "utils.h"
 #include "malloc.h"
 
 // this macro will get the this object in the current context as not declared dependency
@@ -33,6 +35,18 @@ void code_setfilepath(CodeGenerator *this, const char *filepath) {
         abort();
     }
 }
+
+void code_setup(CodeGenerator *this, const char *filepath) {
+    // create a dir and write every file in it
+    bool success = createdir("./dist");
+    if(!success) {
+        perror("creating dir failed");
+        exit(EXIT_FAILURE);
+    }
+
+    code_setfilepath(this, filepath);
+}
+
 
 void generate_indent(CodeGenerator *this) {
     for(size_t i = 0; i < this->state.indent; ++i) {
@@ -108,8 +122,16 @@ void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
         case PRE_DEFINED_TYPE_VOID:
             WRITE_CODE("void");
             break;
+        case PRE_DEFINED_TYPE_STRING:
+            gcontext_pushinclude(this->gcontext, include(svc("costring.h"), false));
+            WRITE_CODE("string");
+            break;
+        case PRE_DEFINED_TYPE_BOOL:
+            gcontext_pushinclude(this->gcontext, include(svc("stdbool.h"), true));
+            WRITE_CODE("bool");
+            break;
         default:
-        assert(false && "unreachable");
+            assert(false && "unreachable");
     }
 }
 
@@ -410,10 +432,55 @@ void generate(CodeGenerator *this) {
     // push the global transpiler context
     gcontext_push(this->gcontext);
 
+    // include the includes root file
+    WRITE_CODE("#include \"./root.h\"\n\n");
+
     for(size_t i = 0; i < this->tree->count; ++i) {
         Node *n = this->tree->items[i];
         generate_node(this, n, false);
         WRITE_CODE("\n");
+    }
+
+    if(this->gcontext->includes.count == 0) { 
+        return;
+    }
+
+    bool success = createdir("./dist/include");
+    if(!success) {
+        perror("creating dir failed");
+        exit(EXIT_FAILURE);
+    }
+
+    FILE *root = fopen("./dist/root.h", "w");
+    if(!root) { 
+        perror("fopen failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // for every file included, write its context in the file itself
+    for(size_t i = 0; i < this->gcontext->includes.count; ++i) {
+        SV filename = this->gcontext->includes.items[i].name;
+        char orgpath[FILENAME_MAX] = {0};
+        char outpath[FILENAME_MAX] = {0};
+
+        snprintf(orgpath, sizeof(orgpath), "./libs/" SV_FMT, SV_UNWRAP(filename));
+        snprintf(outpath, sizeof(outpath), "./dist/include/" SV_FMT, SV_UNWRAP(filename));
+
+        bool result = fcopy((const char *)orgpath, (const char *)outpath);
+        if(!result) {
+            perror("file copying failed");
+            exit(EXIT_FAILURE);
+        }
+
+        // update the root  file
+        char include[FILENAME_MAX] = {0};
+        snprintf(include, sizeof(include), "#include" " " "\"./include/" SV_FMT "\"", SV_UNWRAP(filename)); 
+        fwrite(include, sizeof(char), strlen(include), root);
+    }
+
+    fclose(root);
+    if(this->state.f != stdout) {
+        fclose(this->state.f);
     }
 }
 

@@ -6,8 +6,10 @@
 #include "malloc.h"
 
 const PreDefinedTypeMap predeftypes[PRE_DEFINED_TYPE_COUNT] = {
-    { .type = PRE_DEFINED_TYPE_INT, .type_as_cstr = "int" },
-    { .type = PRE_DEFINED_TYPE_VOID, .type_as_cstr = "void" }
+    { .type = PRE_DEFINED_TYPE_VOID,    .type_as_cstr = "void" },
+    { .type = PRE_DEFINED_TYPE_BOOL,    .type_as_cstr = "bool" },
+    { .type = PRE_DEFINED_TYPE_INT,     .type_as_cstr = "int" },
+    { .type = PRE_DEFINED_TYPE_STRING,  .type_as_cstr = "string" }
 };
 
 Parser *parser(ARRAY_OF(Token) tokens) {

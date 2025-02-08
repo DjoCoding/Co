@@ -27,6 +27,8 @@ typedef struct {
 typedef enum {
     PRE_DEFINED_TYPE_VOID = 0,
     PRE_DEFINED_TYPE_INT,
+    PRE_DEFINED_TYPE_STRING,
+    PRE_DEFINED_TYPE_BOOL,
     PRE_DEFINED_TYPE_COUNT
 } PreDefinedType;  
 

@@ -19,7 +19,7 @@ typedef struct {
 } CodeGenerator;
 
 CodeGenerator *code(AST *tree);
-void code_setfilepath(CodeGenerator *this, const char *filepath);
+void code_setup(CodeGenerator *this, const char *filepath);
 void generate(CodeGenerator *this);
 
 #endif

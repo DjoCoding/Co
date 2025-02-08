@@ -7,6 +7,12 @@
         "token.h": "c",
         "assert.h": "c",
         "cmath": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "dirent.h": "c",
+        "stdio.h": "c",
+        "utils.h": "c",
+        "string": "c",
+        "root.h": "c",
+        "costring.h": "c"
     }
 }

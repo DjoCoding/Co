@@ -6,22 +6,8 @@
 #include "parser.h"
 #include "logger.h"
 #include "code.h"
+#include "utils.h"
 
-char *fcontent(const char *filepath) {
-    FILE *f = fopen(filepath, "r");
-    if(!f) { abort(); }
-
-    fseek(f, 0, SEEK_END);
-    size_t fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char *content = alloc(sizeof(char) * (fsize + 1));
-    fread(content, sizeof(char), fsize, f);
-    content[fsize] = 0;
-
-    fclose(f);
-    return content;
-}
 
 typedef struct {
     const char *source_code_filepath;
@@ -135,7 +121,7 @@ int main(int argc, char **argv) {
 
     if(global.gencode) {
         CodeGenerator *c = code(a);
-        code_setfilepath(c, global.output_filepath);
+        code_setup(c, global.output_filepath);
         generate(c);
     }
 

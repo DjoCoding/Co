@@ -3,6 +3,7 @@
 
 #include "sv.h"
 #include "da.h"
+#include "shared.h"
 
 #define END_TOKEN (Token) { .kind = TOKEN_KIND_END, .value = SV_NULL }
 
@@ -40,13 +41,14 @@ typedef enum {
 typedef struct {
     SV value;
     TokenKind kind;
+    Location loc;
 } Token;
 
 #define TOKEN_NONE (Token) { .value = SV_NULL, .kind = TOKEN_KIND_NONE }
 
 DEF_ARRAY(Token);
 
-Token token(SV value, TokenKind kind);
+Token token(SV value, TokenKind kind, Location loc);
 const char *tokenkind_cstr(TokenKind kind);
 
 #define ADDITION_TOKEN_KIND_COUNT 2

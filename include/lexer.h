@@ -3,12 +3,12 @@
 
 #include "token.h"
 #include "sv.h"
+#include "shared.h"
 
 typedef struct {
     SV filename;
     SV source;
-    size_t line;
-    size_t offset;
+    Location loc;
     size_t current;
     Token currentok;
 } Lexer;    

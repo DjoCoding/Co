@@ -42,8 +42,7 @@ Lexer *lexer(SV source) {
     this->source = source;
     this->current = 0;
     this->filename = SV_NULL;
-    this->line = 1;
-    this->offset = 1;
+    this->loc = location(1, 1);
     this->currentok = TOKEN_NONE;
     return this;
 }
@@ -57,8 +56,7 @@ LexerError lexerror(ErrorCode code, Lexer *this) {
         .code = code,
         .current = this->current,
         .filename = this->filename,
-        .line = this->line,
-        .offset = this->offset,
+        .loc = this->loc,
         .lasttok = this->currentok,
     };
 }
@@ -76,14 +74,14 @@ void ladvance(Lexer *this) {
 
     switch(c) {
         case '\n': 
-            this->line += 1;
-            this->offset = 1;
+            this->loc.line += 1;
+            this->loc.offset = 1;
             break;
         case '\t':
-            this->offset += 4;
+            this->loc.offset += 4;
             break;
         default:
-            this->offset += 1;
+            this->loc.offset += 1;
     }
 
     ++this->current;
@@ -101,6 +99,8 @@ bool lend(Lexer *this) {
 }
 
 Token trylexpredef(Lexer *this) {
+    Location loc = this->loc;
+
     for(size_t i = 0; i < LENGTH(pre_defined_tokens); ++i) {
         // get the string view from the current pre defined token
         SV current = svc((char *)pre_defined_tokens[i].value);
@@ -108,7 +108,7 @@ Token trylexpredef(Lexer *this) {
         // compare the string view value with the sub string view from the source code of the same length
         if(svcmp(current, svsub(this->source, this->current, current.count))) {
             ladvance_ahead(this, current.count);
-            this->currentok = token(current, pre_defined_tokens[i].kind);
+            this->currentok = token(current, pre_defined_tokens[i].kind, loc);
             return this->currentok;
         }
     }
@@ -117,6 +117,8 @@ Token trylexpredef(Lexer *this) {
 }
 
 Token trylexnumber(Lexer *this) {
+    Location loc = this->loc;
+
     if(isdigit(lpeek(this))) {
         //FIXME: fix this by making this an independant function that lexes and checks for errors
         size_t size = 0;
@@ -126,7 +128,7 @@ Token trylexnumber(Lexer *this) {
             ++size;
             ladvance(this);
         }
-        this->currentok = token(sv(start, size), TOKEN_KIND_INTEGER);
+        this->currentok = token(sv(start, size), TOKEN_KIND_INTEGER, loc);
         return this->currentok;
     }
 
@@ -134,6 +136,8 @@ Token trylexnumber(Lexer *this) {
 }
 
 Token trylexstring(Lexer *this) {
+    Location loc = this->loc;
+
     if(lpeek(this) == '\"') {
         ladvance(this);
         size_t size = 0;
@@ -145,7 +149,7 @@ Token trylexstring(Lexer *this) {
         }
         
         if(lpeek(this) != '\"') {
-            this->currentok = token(sv(start, size), TOKEN_KIND_INVALID);
+            this->currentok = token(sv(start, size), TOKEN_KIND_INVALID, this->loc);
             throw(
                 error(
                     LEXER, 
@@ -156,7 +160,7 @@ Token trylexstring(Lexer *this) {
         }
 
         ladvance(this);
-        this->currentok = token(size == 0 ? SV_NULL : sv(start, size), TOKEN_KIND_STRING);
+        this->currentok = token(size == 0 ? SV_NULL : sv(start, size), TOKEN_KIND_STRING, loc);
         return this->currentok;
     }
 
@@ -164,6 +168,8 @@ Token trylexstring(Lexer *this) {
 }
 
 Token trylexidentifier(Lexer *this) {
+    Location loc = this->loc;
+
     if(isalpha(lpeek(this))) {
         size_t size = 0;
         char *start = lpeekp(this);
@@ -172,7 +178,7 @@ Token trylexidentifier(Lexer *this) {
             ++size; 
             ladvance(this); 
         }
-        this->currentok = token(sv(start, size), TOKEN_KIND_IDENTIFIER);
+        this->currentok = token(sv(start, size), TOKEN_KIND_IDENTIFIER, loc);
         return this->currentok;
     }
 
@@ -194,7 +200,7 @@ Token ltoken(Lexer *this) {
     tok = trylexidentifier(this);
     if(tok.kind != TOKEN_KIND_NONE) { return tok; }
     
-    this->currentok = token(sv(lpeekp(this), 1), TOKEN_KIND_INVALID);
+    this->currentok = token(sv(lpeekp(this), 1), TOKEN_KIND_INVALID, this->loc);
     throw(
         error(
             LEXER, 

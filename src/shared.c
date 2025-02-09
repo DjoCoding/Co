@@ -25,3 +25,10 @@ const char *mapoptostr(Operation op) {
     //FIXME: error 
     assert(false && "operation logging not implemented yet");
 }
+
+Location location(size_t line, size_t offset) {
+    return (Location) {
+        .line = line, 
+        .offset = offset
+    };
+}

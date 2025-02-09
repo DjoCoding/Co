@@ -116,6 +116,7 @@ int main(int argc, char **argv) {
 
     // parsing
     Parser *p = parser(tokens);
+    parserofile(p, global.ifile);
     AST *a = parse(p);
     if(global.logparser) log_ast(a);
 

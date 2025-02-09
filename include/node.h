@@ -4,6 +4,9 @@
 #include "sv.h"
 #include "da.h"
 
+#define TYPE_NONE (Type) { .kind = TYPE_KIND_NONE }
+#define PARAM_NONE (Parameter) { .type = TYPE_NONE, .name = SV_NULL }
+
 typedef enum {
     NODE_KIND_NONE = 0,
     NODE_KIND_FUNCTION_DECLARATION,
@@ -33,7 +36,8 @@ typedef enum {
 } PreDefinedType;  
 
 typedef enum {
-    TYPE_KIND_PRE_DEFINED
+    TYPE_KIND_NONE = 0,
+    TYPE_KIND_PRE_DEFINED, 
 } TypeKind;
 
 typedef union {

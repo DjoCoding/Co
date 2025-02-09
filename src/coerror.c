@@ -27,6 +27,12 @@ ErrorFrom errfromlexer(LexerError err) {
     };
 } 
 
+inline ErrorFrom errfromparser(ParserError err) {
+    return (ErrorFrom) {
+        .parser = err
+    };
+}
+
 Error error(Stage stage, ErrorFrom from) {
     return(Error) {
         .stage = stage, 
@@ -34,14 +40,20 @@ Error error(Stage stage, ErrorFrom from) {
     };
 }
 
+char *allocmes() {
+    char *m = alloc(sizeof(char) * ERROR_MAX_LENGTH);
+    m[ERROR_MAX_LENGTH - 1] = 0;
+    return m;
+}
+
 void throw_lexerr(LexerError err) {
     // for message: global message displayed on the screen
-    char *m = alloc(sizeof(char) * ERROR_MAX_LENGTH);
-    
+    char *m = allocmes();
+
     // view on the message, to perform operations on it
     SV mview = svc(m);
 
-    append(mview, SV_FMT ":%zu:%zu:", SV_UNWRAP(err.filename), err.line, err.offset);
+    append(mview, SV_FMT ":%zu:%zu:", SV_UNWRAP(err.filename), err.loc.line, err.loc.offset);
 
     append(mview, " ");
     append(mview, red("error:"));
@@ -49,7 +61,7 @@ void throw_lexerr(LexerError err) {
 
     switch(err.code) {
         case INVALID_TOKEN: 
-            append(mview, ": error: invalid token `" SV_FMT "`", SV_UNWRAP(err.lasttok.value));
+            append(mview, "invalid token `" SV_FMT "`", SV_UNWRAP(err.lasttok.value));
             break;
         case INVALID_STRING:
             {
@@ -76,10 +88,52 @@ void throw_lexerr(LexerError err) {
     exit(EXIT_FAILURE);
 }
 
+void throw_parserr(ParserError err) {
+    char *m = allocmes();
+    SV mview = svc(m);
+
+    append(mview, SV_FMT ":%zu:%zu:", SV_UNWRAP(err.filename), err.currtoken.loc.line, err.currtoken.loc.offset);
+
+    append(mview, " ");
+    append(mview, red("error:"));
+    append(mview, " ");
+
+    switch (err.code) {
+        case UNKNOWN_TYPE_NAME:
+            append(mview, "unknown type name `" red(SV_FMT) "`", SV_UNWRAP(err.currtoken.value));
+            break;
+        case EXPECTED_TOKEN_KIND_BUT_FOUND_ANOTHER:
+            append(
+                mview, 
+                "expected `" blue("%s") "` token but found token `" red("%s") "` instead (" red(SV_FMT) ")",
+                tokenkind_cstr(err.expectedkind),
+                tokenkind_cstr(err.currtoken.kind),
+                SV_UNWRAP(err.currtoken.value)
+            );
+            break;
+        case EXPECTED_EXPRESSION:   
+            append(
+                mview, 
+                "expected expression instead of `" red(SV_FMT) "`",
+                SV_UNWRAP(err.currtoken.value)
+            );
+            break;
+        default:
+            UNREACHABLE()
+    }
+
+    fprintf(stderr, SV_FMT "\n", SV_UNWRAP(mview));
+    free(m);
+
+    exit(EXIT_FAILURE);
+}
+
 void throw(Error err) {
     switch(err.stage) {
         case LEXER: 
             return throw_lexerr(err.from.lexer);
+        case PARSER:
+            return throw_parserr(err.from.parser);
         default:
             TODO("throw errors not fully implemented");
     }

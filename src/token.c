@@ -2,6 +2,7 @@
 
 const char *token_kind_cstr[] = {
     "None",
+    "Invalid",
     "fn",
     "id",
     "(",
@@ -48,10 +49,11 @@ const TokenKind comparaison[COMPARAISON_TOKEN_KIND_COUNT] = {
     TOKEN_KIND_EQ
 };
 
-Token token(SV value, TokenKind kind) {
+Token token(SV value, TokenKind kind, Location loc) {
     return (Token) {
         .value = value, 
-        .kind = kind
+        .kind = kind,
+        .loc = loc
     };
 }
 

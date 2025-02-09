@@ -5,6 +5,9 @@
 #include <assert.h>
 #include "malloc.h"
 
+// this for the parser instance
+#define expect(kind) throw(error(PARSER, errfromparser(parserror(kind, EXPECTED_TOKEN_KIND_BUT_FOUND_ANOTHER, this))))
+
 const PreDefinedTypeMap predeftypes[PRE_DEFINED_TYPE_COUNT] = {
     { .type = PRE_DEFINED_TYPE_VOID,    .type_as_cstr = "void" },
     { .type = PRE_DEFINED_TYPE_BOOL,    .type_as_cstr = "bool" },
@@ -16,18 +19,31 @@ Parser *parser(ARRAY_OF(Token) tokens) {
     Parser *this = alloc(sizeof(Parser));
     this->tokens = tokens;
     this->current = 0;
+    this->filename = SV_NULL;
     return this;
 }
 
-Token ppeek_ahead(Parser *this, size_t ahead) {
+ParserError parserror(TokenKind kind, ErrorCode code, Parser *this) {
+    ParserError err = {0};
+    err.code = code;
+    err.filename = this->filename;
+    err.expectedkind = kind;
+    err.currtoken = this->tokens.items[this->current];
+    return err;
+}
+
+void parserofile(Parser *this, const char *filename) {
+    this->filename = svc((char *)filename);
+}
+
+Token trypeakahead(Parser *this, size_t ahead) {
     if(this->current + ahead >= this->tokens.count) { return TOKEN_NONE; }
     return this->tokens.items[this->current + ahead];
 }
 
 Token ppeek(Parser *this) {
-    return ppeek_ahead(this, 0);
+    return trypeakahead(this, 0);
 }
-
 
 void padvance(Parser *this) {
     ++this->current;
@@ -59,7 +75,20 @@ Type parse_type(Parser *this) {
         }
     }
 
-    assert(false && "type not implemented yet");
+    throw(
+        error(
+            PARSER,
+            errfromparser(
+                parserror(
+                    TOKEN_KIND_NONE,
+                    UNKNOWN_TYPE_NAME,
+                    this
+                )
+            )
+        )
+    );
+
+    return TYPE_NONE;
 }
 
 int parse_integer(SV value) {
@@ -89,16 +118,18 @@ Expression *parse_primary(Parser *this) {
     if(t.kind == TOKEN_KIND_OPEN_PAREN) {
         padvance(this);
         Expression *e = parse_addition(this);
-        if(!pexpect(this, TOKEN_KIND_CLOSE_PAREN)) { 
-            //FIXME: error
-            abort();
+        
+        if(pexpect(this, TOKEN_KIND_CLOSE_PAREN)) { 
+            padvance(this);
+            return e;
         }
-        padvance(this);
-        return e;
+
+        expect(TOKEN_KIND_CLOSE_PAREN);
+        return NULL;
     }
 
     if(t.kind == TOKEN_KIND_IDENTIFIER) {
-        if(ppeek_ahead(this, 1).kind == TOKEN_KIND_OPEN_PAREN) {
+        if(trypeakahead(this, 1).kind == TOKEN_KIND_OPEN_PAREN) {
             FunctionCall funccall = parse_function_call(this);
             return expras_funccall(funccall);
         }
@@ -109,8 +140,21 @@ Expression *parse_primary(Parser *this) {
         });
     }
 
-    //FIXME: raise error 
-    abort();
+
+    throw(
+        error(
+            PARSER,
+            errfromparser(
+                parserror(
+                    TOKEN_KIND_NONE,
+                    EXPECTED_EXPRESSION,
+                    this
+                )
+            )
+        )
+    );
+    
+    return NULL;
 }
 
 Expression *parse_multiplication(Parser *this) {
@@ -185,7 +229,7 @@ Expression *parse_comparaison(Parser *this) {
                 op = OPERATION_EQ;
                 break;
             default: 
-                assert(false && "unreachable");
+                UNREACHABLE();
         }
 
         padvance(this);
@@ -207,7 +251,6 @@ Expression *parse_expression(Parser *this) {
     return parse_comparaison(this);
 }
 
-//FIXME: fix this to make it parse a parameter (<type> name)
 Parameter parse_parameter(Parser *this) {
     Parameter p = {0};
 
@@ -215,8 +258,8 @@ Parameter parse_parameter(Parser *this) {
     p.type = type;
 
     if(!pexpect(this, TOKEN_KIND_IDENTIFIER)) { 
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_IDENTIFIER);
+        return PARAM_NONE;
     }
 
     p.name = ppeek(this).value;
@@ -247,13 +290,13 @@ ARRAY_OF(Parameter) parse_parameters(Parser *this) {
             continue;
         }
 
-        //FIXME: error 
-        abort();
+        expect(TOKEN_KIND_COMMA);
+        return ARRAY(Parameter);
     }
 
     if(!pexpect(this, TOKEN_KIND_CLOSE_PAREN)) { 
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_CLOSE_PAREN);
+        return ARRAY(Parameter);
     }
 
     // consuming the ')' token
@@ -273,8 +316,8 @@ ARRAY_OF(Argument) parse_arguments(Parser *this) {
     ARRAY_OF(Argument) args = ARRAY(Argument);
 
     if(!pexpect(this, TOKEN_KIND_OPEN_PAREN)) { 
-        //FIXME: error 
-        abort();
+        expect(TOKEN_KIND_OPEN_PAREN);
+        return ARRAY(Argument);
     }
 
     padvance(this);
@@ -294,13 +337,11 @@ ARRAY_OF(Argument) parse_arguments(Parser *this) {
             continue;
         }
 
-        //FIXME: error 
-        abort();
     }
 
     if(!pexpect(this, TOKEN_KIND_CLOSE_PAREN)) { 
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_CLOSE_PAREN);
+        return ARRAY(Argument);
     }
 
     // consuming the ')' token
@@ -323,8 +364,8 @@ Body parse_body(Parser *this) {
 
 FunctionDeclaration parse_function_declaration(Parser *this) {
     if(!pexpect(this, TOKEN_KIND_FN)) {
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_FN);
+        return (FunctionDeclaration) {0};
     }
 
     // consuming the fn token
@@ -333,14 +374,13 @@ FunctionDeclaration parse_function_declaration(Parser *this) {
     FunctionDeclaration funcdecl = {0};
 
     if(!pexpect(this, TOKEN_KIND_IDENTIFIER)) {
-        //FIXME: error 
-        abort();
+        expect(TOKEN_KIND_IDENTIFIER);
+        return (FunctionDeclaration) {0};   
     }
 
     funcdecl.name = ppeek(this).value;
     padvance(this);
 
-    
     ARRAY_OF(Parameter) params = parse_parameters(this);
     funcdecl.params = params;
 
@@ -358,6 +398,7 @@ FunctionDeclaration parse_function_declaration(Parser *this) {
         // fn add(int a, int b) => a + b;
         //FIXME: error
         abort();
+        TODO("inline functions not implemented yet\n example: fn add(int a, int b) => a + b");
     }
 
     padvance(this);
@@ -365,8 +406,8 @@ FunctionDeclaration parse_function_declaration(Parser *this) {
     Body body = parse_body(this);
 
     if(!pexpect(this, TOKEN_KIND_CLOSE_CURLY)) {
-        //FIXME: error 
-        abort();
+        expect(TOKEN_KIND_CLOSE_CURLY);
+        return (FunctionDeclaration) {0};   
     }
 
     funcdecl.body = body;
@@ -378,8 +419,8 @@ FunctionDeclaration parse_function_declaration(Parser *this) {
 
 FunctionCall parse_function_call(Parser *this) {
     if(!pexpect(this, TOKEN_KIND_IDENTIFIER)) {
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_IDENTIFIER);
+        return (FunctionCall) {0};   
     }
 
     FunctionCall funccall = {0};
@@ -400,8 +441,8 @@ VariableDeclaration parse_variable_declaration(Parser *this) {
     vardec.type = type;
 
     if(!pexpect(this, TOKEN_KIND_IDENTIFIER)) {
-        //FIXME: raise error 
-        abort();
+        expect(TOKEN_KIND_IDENTIFIER);
+        return (VariableDeclaration) {0};   
     }
 
     vardec.name = ppeek(this).value;
@@ -422,8 +463,8 @@ VariableDeclaration parse_variable_declaration(Parser *this) {
 
 If parse_if(Parser *this) {
     if(!pexpect(this, TOKEN_KIND_IF)) {
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_IF);
+        return (If) {0};   
     }
 
     padvance(this);
@@ -431,8 +472,8 @@ If parse_if(Parser *this) {
     If iff = {0};
 
     if(!pexpect(this, TOKEN_KIND_OPEN_PAREN)) {
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_OPEN_PAREN);
+        return (If) {0};   
     }
 
     padvance(this);
@@ -441,8 +482,8 @@ If parse_if(Parser *this) {
     iff.e = e;
 
     if(!pexpect(this, TOKEN_KIND_CLOSE_PAREN)) {
-        //FIXME: error 
-        abort();
+        expect(TOKEN_KIND_CLOSE_PAREN);
+        return (If) {0};       
     }
 
     padvance(this);
@@ -459,8 +500,8 @@ If parse_if(Parser *this) {
     iff.body = body;
 
     if(!pexpect(this, TOKEN_KIND_CLOSE_CURLY)) {
-        //FIXME: error 
-        abort();
+        expect(TOKEN_KIND_CLOSE_CURLY);
+        return (If) {0};   
     }
 
     padvance(this);
@@ -470,8 +511,8 @@ If parse_if(Parser *this) {
 
 For parse_for(Parser *this) {
     if(!pexpect(this, TOKEN_KIND_FOR)) {
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_FOR);
+        return (For) {0};   
     }
 
     padvance(this);
@@ -479,7 +520,7 @@ For parse_for(Parser *this) {
     For forr = {0};
 
     if(!pexpect(this, TOKEN_KIND_OPEN_CURLY)) {
-        if(ppeek_ahead(this, 2).kind != TOKEN_KIND_EQUAL) {
+        if(trypeakahead(this, 2).kind != TOKEN_KIND_EQUAL) {
             Expression *e = parse_expression(this);
             forr.v = NULL;
             forr.e = e;
@@ -488,8 +529,8 @@ For parse_for(Parser *this) {
             forr.v = vardec(var.type, var.name, var.expr);
             
             if(!(pexpect(this, TOKEN_KIND_SEMI_COLON) || pexpect(this, TOKEN_KIND_OPEN_CURLY))) {
-                //FIXME: error
-                abort();
+                expect(TOKEN_KIND_OPEN_CURLY);
+                return (For) {0};
             }
 
             if(pexpect(this, TOKEN_KIND_SEMI_COLON)) {
@@ -501,8 +542,8 @@ For parse_for(Parser *this) {
     }
 
     if(!pexpect(this, TOKEN_KIND_OPEN_CURLY)) {
-        //FIXME: error 
-        abort();
+        expect(TOKEN_KIND_OPEN_CURLY);
+        return (For) {0};
     }
 
     padvance(this);
@@ -511,8 +552,8 @@ For parse_for(Parser *this) {
     forr.body = body;
 
     if(!pexpect(this, TOKEN_KIND_CLOSE_CURLY)) {
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_CLOSE_CURLY);
+        return (For) {0};
     }
 
     padvance(this);
@@ -522,8 +563,8 @@ For parse_for(Parser *this) {
 
 VariableReassignement parse_variable_reassignement(Parser *this) {
     if(!pexpect(this, TOKEN_KIND_IDENTIFIER)) {
-        // FIXME: error
-        abort();
+        expect(TOKEN_KIND_IDENTIFIER);
+        return (VariableReassignement) {0};
     }
 
     VariableReassignement varres = {0};
@@ -532,8 +573,8 @@ VariableReassignement parse_variable_reassignement(Parser *this) {
     padvance(this);
 
     if(!pexpect(this, TOKEN_KIND_EQUAL)) {
-        //FIXME: error
-        abort();
+        expect(TOKEN_KIND_EQUAL);
+        return (VariableReassignement) {0};
     }
 
     padvance(this);
@@ -599,22 +640,33 @@ Node *parse_node(Parser *this, bool infuncbody) {
     }
 
     if(t.kind == TOKEN_KIND_IDENTIFIER) {
-        if(ppeek_ahead(this, 1).kind == TOKEN_KIND_OPEN_PAREN) {
+        if(trypeakahead(this, 1).kind == TOKEN_KIND_OPEN_PAREN) {
             return parse_function_call_node(this);
         }
 
-        for(size_t i = 0; i < LENGTH(predeftypes); ++i) {
-            PreDefinedTypeMap typemapper = predeftypes[i];
-            if(svcmp(svc((char *)typemapper.type_as_cstr), t.value)) {
-                return parse_variable_declaration_node(this);
-            }
+        if(trypeakahead(this, 1).kind == TOKEN_KIND_EQUAL) {
+            return parse_variable_reassignement_node(this);
         }
-        
-        return parse_variable_reassignement_node(this);
+
+        if(trypeakahead(this, 2).kind == TOKEN_KIND_EQUAL) {
+            return parse_variable_declaration_node(this);
+        }
     }
 
-    //FIXME: error
-    abort();
+    throw(
+        error(
+            PARSER,
+            errfromparser(
+                parserror(
+                    TOKEN_KIND_NONE,
+                    INVALID_TOKEN,
+                    this
+                )
+            )
+        )
+    );
+
+    return NULL;
 }
 
 Node *parse_root_node(Parser *this) {

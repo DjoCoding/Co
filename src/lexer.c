@@ -37,18 +37,18 @@ TokenKindValueObject pre_defined_tokens[] = {
     { TOKEN_KIND_RETURN, "return" },
 };
 
-Lexer *lexer(SV source) {
+Lexer *lexer(const char *filename) {
     Lexer *this = alloc(sizeof(Lexer));
-    this->source = source;
+    this->source = SV_NULL;
     this->current = 0;
-    this->filename = SV_NULL;
+    this->filename = svc((char *)filename);
     this->loc = location(1, 1);
     this->currentok = TOKEN_NONE;
     return this;
 }
 
-void lexerofile(Lexer *this, const char *filename) {
-    this->filename = svc((char *)filename);
+void lexer_set_source(Lexer *this, SV source) {
+    this->source = source;
 }
 
 LexerError lexerror(ErrorCode code, Lexer *this) {

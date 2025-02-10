@@ -24,7 +24,14 @@
         "new": "c",
         "shared.h": "c",
         "system_error": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "typechecker.h": "c",
+        "coerror.h": "c",
+        "vector": "cpp",
+        "exception": "cpp",
+        "string_view": "cpp",
+        "functional": "cpp",
+        "iosfwd": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

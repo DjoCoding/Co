@@ -8,7 +8,13 @@ typedef struct {
     const char *value;
 } OperationStringMapper; 
 
+typedef struct {
+    PreDefinedType type;
+    const char *type_as_cstr;
+} PreDefinedTypeMap;
+
 extern const OperationStringMapper opstrmapper[OPERATIONS_COUNT];
+extern const PreDefinedTypeMap predeftypes[PRE_DEFINED_TYPE_COUNT];
 
 const char *mapoptostr(Operation op);
 

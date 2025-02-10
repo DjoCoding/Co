@@ -13,8 +13,8 @@ typedef struct {
     Token currentok;
 } Lexer;    
 
-Lexer *lexer(SV source);
-void lexerofile(Lexer *this, const char *filename);
+Lexer *lexer(const char *filename);
+void lexer_set_source(Lexer *this, SV source);
 ARRAY_OF(Token) lex(Lexer *this);
 
 #endif

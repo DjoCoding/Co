@@ -1,6 +1,7 @@
 #ifndef COERROR_H
 #define COERROR_H
 
+#include <stdlib.h>
 #include "token.h"
 #include "sv.h"
 #include "shared.h"
@@ -13,6 +14,7 @@ typedef enum {
     LEXER = 0,
     PARSER,
     CONTEXT,
+    TYPE,
     CODE_GENERATOR
 } Stage;
 
@@ -25,6 +27,10 @@ typedef enum {
     EXPECTED_EXPRESSION,
     FUNCTION_ALREADY_DECLARED,
     VARIABLE_ALREADY_DECLARED,
+    VARIABLE_NOT_DECLARED,
+    FUNCTION_NOT_DECLARED,
+    INVALID_NUMBER_OF_PARAMS,
+    TYPE_ERROR,
     INVALID_START_OF_STATEMENT
 } ErrorCode;
 
@@ -49,10 +55,18 @@ typedef struct {
     SV name;
 } ContextError;
 
+typedef struct {
+    SV filename;
+    ErrorCode code;
+    SV expectedtype;
+    SV foundtype;
+} TypeError;
+
 typedef union {
     LexerError lexer;
     ParserError parser;
     ContextError context;
+    TypeError type;
 } ErrorFrom;
 
 typedef struct {
@@ -63,6 +77,7 @@ typedef struct {
 ErrorFrom errfromlexer(LexerError err);
 ErrorFrom errfromparser(ParserError err);
 ErrorFrom errfromcontext(ContextError err);
+ErrorFrom errfromtype(TypeError err);
 Error error(Stage stage, ErrorFrom from);
 void throw(Error err);
 void report(Error err);

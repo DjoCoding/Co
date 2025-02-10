@@ -39,6 +39,12 @@ ErrorFrom errfromcontext(ContextError err) {
     };
 }
 
+ErrorFrom errfromtype(TypeError err) {
+    return (ErrorFrom) {
+        .type = err
+    };
+}
+
 
 Error error(Stage stage, ErrorFrom from) {
     return(Error) {

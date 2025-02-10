@@ -14,6 +14,13 @@ const OperationStringMapper opstrmapper[OPERATIONS_COUNT] = {
     { OPERATION_EQ, "==" },
 };
 
+const PreDefinedTypeMap predeftypes[PRE_DEFINED_TYPE_COUNT] = {
+    { .type = PRE_DEFINED_TYPE_VOID,    .type_as_cstr = "void" },
+    { .type = PRE_DEFINED_TYPE_BOOL,    .type_as_cstr = "bool" },
+    { .type = PRE_DEFINED_TYPE_INT,     .type_as_cstr = "int" },
+    { .type = PRE_DEFINED_TYPE_STRING,  .type_as_cstr = "string" }
+};
+
 const char *mapoptostr(Operation op) {
     for(size_t i = 0; i < LENGTH(opstrmapper); ++i) {
         OperationStringMapper current = opstrmapper[i];

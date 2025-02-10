@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "da.h"
 #include "malloc.h"
-#include "lexer.h"
-#include "parser.h"
 #include "logger.h"
-#include "code.h"
 #include "utils.h"
+#include "transpiler.h"
 
 typedef struct {
     const char *ifile; // input file name
@@ -104,31 +103,28 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    // getting source code
-    char *source = fcontent((const char *)global.ifile);
-
-    // lexing
-    Lexer *l = lexer(svc(source));
-    lexerofile(l, global.ifile);
-    ARRAY_OF(Token) tokens = lex(l);
-    if(global.loglexer) log_tokens(tokens);
-    
-
-    // parsing
-    Parser *p = parser(tokens);
-    parserofile(p, global.ifile);
-    AST *a = parse(p);
-    if(global.logparser) log_ast(a);
-
-
-    // generating code
-    if(global.gencode) {
-        CodeGenerator *c = code(a);
-        code_setup(c, global.ofile);
-        generate(c);
+    Transpiler *t = transpiler(global.ifile, global.ofile);
+    if(!transpiler_read_source(t)) {
+        perror("reading source code failed");
+        exit(EXIT_FAILURE);
     }
 
-    // cleanup
-    free(source);
+    transpiler_setup_lexer(t);
+    transpiler_lex_source(t);
+    if(global.loglexer) {
+        ARRAY_OF(Token) tokens = t->tokens;
+        log_tokens(tokens);
+    }
+
+    transpiler_setup_parser(t);
+    transpiler_parse_tokens(t);
+    if(global.logparser) {
+        AST *tree = t->tree;
+        log_ast(tree);
+    }
+
+    transpiler_setup_generator(t);
+    transpiler_gencode(t);
+
     return 0;
 }

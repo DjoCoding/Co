@@ -8,23 +8,14 @@
 #include "ast.h"
 
 typedef struct {
-    PreDefinedType type;
-    const char *type_as_cstr;
-} PreDefinedTypeMap;
-
-extern const PreDefinedTypeMap predeftypes[PRE_DEFINED_TYPE_COUNT];
-typedef struct {
     SV filename;
     ARRAY_OF(Token) tokens;
     size_t current;
 } Parser;
 
 
-Parser *parser(ARRAY_OF(Token) tokens);
+Parser *parser(const char *filename);
+void parser_set_tokens(Parser *this, ARRAY_OF(Token) tokens);
 AST *parse(Parser *this);
-
-// specify which file to be parsed
-void parserofile(Parser *this, const char *filename);
-
 
 #endif

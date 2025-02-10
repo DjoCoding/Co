@@ -4,23 +4,21 @@
 #include <stdbool.h>
 #include <assert.h>
 #include "malloc.h"
+#include "shared.h"
 
 // this for the parser instance
 #define expect(kind) throw(error(PARSER, errfromparser(parserror(kind, EXPECTED_TOKEN_KIND_BUT_FOUND_ANOTHER, this))))
 
-const PreDefinedTypeMap predeftypes[PRE_DEFINED_TYPE_COUNT] = {
-    { .type = PRE_DEFINED_TYPE_VOID,    .type_as_cstr = "void" },
-    { .type = PRE_DEFINED_TYPE_BOOL,    .type_as_cstr = "bool" },
-    { .type = PRE_DEFINED_TYPE_INT,     .type_as_cstr = "int" },
-    { .type = PRE_DEFINED_TYPE_STRING,  .type_as_cstr = "string" }
-};
-
-Parser *parser(ARRAY_OF(Token) tokens) {
+Parser *parser(const char *filename) {
     Parser *this = alloc(sizeof(Parser));
-    this->tokens = tokens;
+    this->tokens = ARRAY(Token);
     this->current = 0;
-    this->filename = SV_NULL;
+    this->filename = svc((char *)filename);
     return this;
+}
+
+void parser_set_tokens(Parser *this, ARRAY_OF(Token) tokens) {
+    this->tokens = tokens;
 }
 
 ParserError parserror(TokenKind kind, ErrorCode code, Parser *this) {
@@ -30,10 +28,6 @@ ParserError parserror(TokenKind kind, ErrorCode code, Parser *this) {
     err.expectedkind = kind;
     err.currtoken = this->tokens.items[this->current];
     return err;
-}
-
-void parserofile(Parser *this, const char *filename) {
-    this->filename = svc((char *)filename);
 }
 
 Token trypeakahead(Parser *this, size_t ahead) {

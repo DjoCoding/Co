@@ -4,6 +4,7 @@
 #include "da.h"
 #include "sv.h"
 #include "node.h"
+#include "coerror.h"
 
 typedef struct {
     SV name;
@@ -49,6 +50,7 @@ Parameter *context_findparam(Context *this, SV paramname);
 Include include(SV name, bool isstd);
 
 CodeGeneratorContext *gcontext();
+ContextError contexterror(ErrorCode code, SV name, CodeGeneratorContext *gcontext);
 void gcontextfile(CodeGeneratorContext *this, const char *filename);
 void gcontext_push(CodeGeneratorContext *this);
 ContextFunction *gcontext_findfunc(CodeGeneratorContext *this, SV funcname);

@@ -6,52 +6,29 @@
 #include <string.h>
 #include "utils.h"
 #include "malloc.h"
+#include "coerror.h"
 
 // this macro will get the this object in the current context as not declared dependency
-#define WRITE_CODE(...) fprintf(this->state.f, __VA_ARGS__)
+#define gencode(...) fprintf(this->state.f, __VA_ARGS__)
 
-CodeGenerator *code(AST *tree) {
+CodeGenerator *code(const char *filename) {
     CodeGenerator *c = alloc(sizeof(CodeGenerator));
-    c->tree = tree;
+    c->tree = NULL;
     c->gcontext = gcontext();
-    c->state = (CodeGeneratorState) {0};
     c->state.f = stdout;
+    c->state = (CodeGeneratorState) {0};
+    c->state.filename = filename;
+    gcontextfile(c->gcontext, filename);
     return c;
 }
 
-bool code_open_outfile(CodeGenerator *this) {
-    FILE *f = fopen(this->state.filpath, "w");
-    if(!f) { return false; }
-    this->state.f = f;
-    return true;
+void code_set_tree(CodeGenerator *this, AST *tree) {
+    this->tree = tree;
 }
-
-void code_setfilepath(CodeGenerator *this, const char *filepath) {
-    this->state.filpath = filepath;
-    gcontextfile(this->gcontext, filepath);
-    bool success = code_open_outfile(this);
-    if(!success) {
-        //FIXME: error 
-        // RAISE SYSCALL FAILED ERROR
-        abort();
-    }
-}
-
-void code_setup(CodeGenerator *this, const char *filepath) {
-    // create a dir and write every file in it
-    bool success = createdir("./dist");
-    if(!success) {
-        perror("creating dir failed");
-        exit(EXIT_FAILURE);
-    }
-
-    code_setfilepath(this, filepath);
-}
-
 
 void generate_indent(CodeGenerator *this) {
     for(size_t i = 0; i < this->state.indent; ++i) {
-        WRITE_CODE("\t");
+        gencode("\t");
     }
 }
 
@@ -63,23 +40,23 @@ void generate_expression_code(CodeGenerator *this, Expression *e);
 void generate_type(CodeGenerator *this, Type type);
 
 void generate_binop_expression_code(CodeGenerator *this, BinOpExpression binop) {
-    WRITE_CODE("(");
+    gencode("(");
     generate_expression_code(this, binop.lhs);
-    WRITE_CODE(" ");
-    WRITE_CODE("%s", mapoptostr(binop.op));
-    WRITE_CODE(" ");
+    gencode(" ");
+    gencode("%s", mapoptostr(binop.op));
+    gencode(" ");
     generate_expression_code(this, binop.rhs);
-    WRITE_CODE(")");
+    gencode(")");
 }
 
 void generate_expression_code(CodeGenerator *this, Expression *e) {
     if(e->kind == EXPRESSION_KIND_INTEGER) { 
-        WRITE_CODE("%d", e->as.integer);
+        gencode("%d", e->as.integer);
         return;
     }
 
     if(e->kind == EXPRESSION_KIND_STRING) {
-        WRITE_CODE("\"" SV_FMT "\"", SV_UNWRAP(e->as.string));
+        gencode("\"" SV_FMT "\"", SV_UNWRAP(e->as.string));
         return;
     }
 
@@ -103,33 +80,33 @@ void generate_funccall_code(CodeGenerator *this, FunctionCall funccall, bool ine
         generate_indent(this);
     }
 
-    WRITE_CODE(SV_FMT, SV_UNWRAP(funccall.name));
-    WRITE_CODE("(");
+    gencode(SV_FMT, SV_UNWRAP(funccall.name));
+    gencode("(");
     for(size_t i = 0; i < funccall.args.count; ++i) {
         Argument arg = funccall.args.items[i];
         generate_expression_code(this, arg.e);
         if(i == funccall.args.count - 1)  { break; }
-        WRITE_CODE(",");
-        WRITE_CODE(" ");
+        gencode(",");
+        gencode(" ");
     }
-    WRITE_CODE(")");
+    gencode(")");
 }
 
 void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
     switch(predef) {
         case PRE_DEFINED_TYPE_INT:
-            WRITE_CODE("int");
+            gencode("int");
             break;
         case PRE_DEFINED_TYPE_VOID:
-            WRITE_CODE("void");
+            gencode("void");
             break;
         case PRE_DEFINED_TYPE_STRING:
             gcontext_pushinclude(this->gcontext, include(svc("costring.h"), false));
-            WRITE_CODE("string");
+            gencode("string");
             break;
         case PRE_DEFINED_TYPE_BOOL:
             gcontext_pushinclude(this->gcontext, include(svc("stdbool.h"), true));
-            WRITE_CODE("bool");
+            gencode("bool");
             break;
         default:
             assert(false && "unreachable");
@@ -138,13 +115,13 @@ void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
 
 void generate_funcdecl_param_code(CodeGenerator *this, Parameter p) {
     generate_type(this, p.type);
-    WRITE_CODE(" ");
-    WRITE_CODE(SV_FMT, SV_UNWRAP(p.name));
+    gencode(" ");
+    gencode(SV_FMT, SV_UNWRAP(p.name));
 }
 
 void generate_funcdecl_params_code(CodeGenerator *this, ARRAY_OF(Parameter) params) {
     if(params.count == 0) { 
-        WRITE_CODE("void");
+        gencode("void");
         return;
     }
 
@@ -152,8 +129,8 @@ void generate_funcdecl_params_code(CodeGenerator *this, ARRAY_OF(Parameter) para
         Parameter p = params.items[i];
         generate_funcdecl_param_code(this, p);
         if(i == params.count - 1) { break; }
-        WRITE_CODE(",");
-        WRITE_CODE(" ");
+        gencode(",");
+        gencode(" ");
     }
 }
 
@@ -161,7 +138,7 @@ void generate_body(CodeGenerator *this, Body body) {
     for(size_t i = 0; i < body.count; ++i) {
         Node *n = body.items[i];
         generate_node(this, n, true);
-        WRITE_CODE("\n");
+        gencode("\n");
     }
 }
 
@@ -170,35 +147,35 @@ void generate_funcdecl_code(CodeGenerator *this, FunctionDeclaration funcdecl) {
 
     generate_type(this, funcdecl.rettype);
 
-    WRITE_CODE(" ");
+    gencode(" ");
     
-    WRITE_CODE(SV_FMT, SV_UNWRAP(funcdecl.name));
+    gencode(SV_FMT, SV_UNWRAP(funcdecl.name));
     
-    WRITE_CODE("(");
+    gencode("(");
     generate_funcdecl_params_code(this, funcdecl.params);
-    WRITE_CODE(")");
-    WRITE_CODE(" ");
+    gencode(")");
+    gencode(" ");
     
-    WRITE_CODE("{\n");
+    gencode("{\n");
     
     this->state.indent += 1;
     generate_body(this, funcdecl.body);
     this->state.indent -= 1;
     
-    WRITE_CODE("}\n");
+    gencode("}\n");
 }
 
 void generate_vardec_code_inline(CodeGenerator *this, VariableDeclaration vardec) {
     generate_type(this, vardec.type);
     
-    WRITE_CODE(" ");
+    gencode(" ");
 
-    WRITE_CODE(SV_FMT, SV_UNWRAP(vardec.name));
+    gencode(SV_FMT, SV_UNWRAP(vardec.name));
 
     if(vardec.expr) {
-        WRITE_CODE(" ");
-        WRITE_CODE("=");
-        WRITE_CODE(" ");
+        gencode(" ");
+        gencode("=");
+        gencode(" ");
         generate_expression_code(this, vardec.expr);
     }
 }
@@ -206,42 +183,83 @@ void generate_vardec_code_inline(CodeGenerator *this, VariableDeclaration vardec
 void generate_vardec_code(CodeGenerator *this, VariableDeclaration vardec) {
     generate_indent(this);
     generate_vardec_code_inline(this, vardec);
-    WRITE_CODE(";");
+    gencode(";");
 }
 
 
 void generate_varvalue(CodeGenerator *this, SV varname) {
     ContextVariable *var = gcontext_findvar(this->gcontext, varname);
     if(!var) {
-        //FIXME: error 
-        // VARIABLE NOT DEFINED IN THE CONTEXT ERROR 
-        abort();    
+        throw(
+            error(
+                CONTEXT,
+                errfromcontext(
+                    contexterror(
+                        VARIABLE_NOT_DECLARED,
+                        varname,
+                        this->gcontext
+                    )
+                )
+            )
+        );
+        return;
     }
 
-    WRITE_CODE(SV_FMT, SV_UNWRAP(var->name));
+    gencode(SV_FMT, SV_UNWRAP(var->name));
 } 
 
 void generate_funccall(CodeGenerator *this, FunctionCall funccall, bool inexpr) {
     ContextFunction *func = gcontext_findfunc(this->gcontext, funccall.name);
     if(!func) {
-        //FIXME: error 
-        // FUNCTION NOT DEFINED IN THE CONTEXT ERROR 
-        abort();
+        throw(
+            error(
+                CONTEXT,
+                errfromcontext(
+                    contexterror(
+                        FUNCTION_NOT_DECLARED,
+                        funccall.name,
+                        this->gcontext
+                    )
+                )
+            )
+        );
+        return;
     }
 
     if(func->params.count != funccall.args.count) { 
-        //FIXME: error 
-        // EXPECTED (func->params.count) arguments but got (funccall.args.count)
-        abort();
+        throw(
+            error(
+                CONTEXT,
+                errfromcontext(
+                    contexterror(
+                        INVALID_NUMBER_OF_PARAMS,
+                        funccall.name,
+                        this->gcontext
+                    )
+                )
+            )
+        );
+        return;
     }
 
     for(size_t i = 0; i < func->params.count; ++i) {
         Parameter p = func->params.items[i];
         Argument arg = funccall.args.items[i];
         if(!typecheck(p.type, arg.e)) { 
-            //FIXME: error
-            // EXPECTED EXPRESSION TO BE OF TYPE (p.type) BUT GOT (typeof(arg.e))
-            abort();
+            throw(
+                error(
+                    TYPE,
+                    errfromtype(
+                        typerror(
+                            TYPE_ERROR,
+                            svc((char *)strtype(p.type)),
+                            svc((char *)strtype(typeOf(arg.e))),
+                            svc((char *)this->state.filename)
+                        )
+                    )
+                )
+            );
+            return;
         }
     }
 
@@ -252,9 +270,19 @@ void generate_funccall(CodeGenerator *this, FunctionCall funccall, bool inexpr) 
 void generate_funcdecl(CodeGenerator *this, FunctionDeclaration funcdecl) {
     ContextFunction *func = gcontext_findfunc(this->gcontext, funcdecl.name);
     if(func) {
-        //FIXME: error
-        // FUNCTION ALREADY EXISTS ERROR
-        abort();
+        throw(
+            error(
+                CONTEXT,
+                errfromcontext(
+                    contexterror(
+                        FUNCTION_ALREADY_DECLARED,
+                        funcdecl.name,
+                        this->gcontext
+                    )
+                )
+            )
+        );
+        return;
     }
 
     // push the function in the current context 
@@ -281,9 +309,19 @@ void generate_funcdecl(CodeGenerator *this, FunctionDeclaration funcdecl) {
 void crash_on_varfound(CodeGenerator *this, SV name) {
     ContextVariable *var = gcontext_findvar(this->gcontext, name);
     if(var) {
-        //FIXME: error
-        // VARIABLE ALREADY EXISTS ERROR
-        abort();    
+        throw(
+            error(
+                CONTEXT,
+                errfromcontext(
+                    contexterror(
+                        VARIABLE_ALREADY_DECLARED,
+                        name,
+                        this->gcontext
+                    )
+                )
+            )
+        );
+        return;
     }
 }
 
@@ -303,32 +341,29 @@ void generate_type(CodeGenerator *this, Type type) {
     if(type.kind == TYPE_KIND_PRE_DEFINED) {
         return generate_predef_type_code(this, type.as.predef);
     }
-
-    //FIXME: error 
-    // INVALID TYPE
-    abort();
+    TODO("implement custom types later on");
 }
 
 void generate_return(CodeGenerator *this, Return ret) {
     generate_indent(this);
-    WRITE_CODE("return");
-    WRITE_CODE(" ");
+    gencode("return");
+    gencode(" ");
     generate_expression_code(this, ret.expr);
-    WRITE_CODE(";");
+    gencode(";");
 }
 
 void generate_if(CodeGenerator *this, If iff) {
     generate_indent(this);
     
-    WRITE_CODE("if");
+    gencode("if");
     
-    WRITE_CODE("(");
+    gencode("(");
     generate_expression_code(this, iff.e);
-    WRITE_CODE(")");
+    gencode(")");
 
-    WRITE_CODE(" ");
+    gencode(" ");
 
-    WRITE_CODE("{\n");
+    gencode("{\n");
 
     // push a new context
     gcontext_push(this->gcontext);
@@ -341,38 +376,38 @@ void generate_if(CodeGenerator *this, If iff) {
     gcontext_pop(this->gcontext);
 
     generate_indent(this);
-    WRITE_CODE("}");
+    gencode("}");
 }
 
 void generate_for(CodeGenerator *this, For forr) {
     generate_indent(this);
     
-    WRITE_CODE("for");
+    gencode("for");
 
     // push a new context
     gcontext_push(this->gcontext);
     
-    WRITE_CODE("(");
+    gencode("(");
     
     if(forr.v) {
         generate_vardec_inline(this, *forr.v);
     }
 
-    WRITE_CODE(";");
-    WRITE_CODE(" ");
+    gencode(";");
+    gencode(" ");
 
     if(forr.e) {
         generate_expression_code(this, forr.e);
     }
 
-    WRITE_CODE(";");
-    WRITE_CODE(" ");
+    gencode(";");
+    gencode(" ");
 
-    WRITE_CODE(")");
+    gencode(")");
 
-    WRITE_CODE(" ");
+    gencode(" ");
 
-    WRITE_CODE("{\n");
+    gencode("{\n");
 
     this->state.indent += 1;
     generate_body(this, forr.body);
@@ -382,17 +417,17 @@ void generate_for(CodeGenerator *this, For forr) {
     gcontext_pop(this->gcontext);
 
     generate_indent(this);
-    WRITE_CODE("}");
+    gencode("}");
 }
 
 void generate_varres(CodeGenerator *this, VariableReassignement varres) {
     generate_indent(this);
-    WRITE_CODE(SV_FMT, SV_UNWRAP(varres.name));
-    WRITE_CODE(" ");
-    WRITE_CODE("=");
-    WRITE_CODE(" ");
+    gencode(SV_FMT, SV_UNWRAP(varres.name));
+    gencode(" ");
+    gencode("=");
+    gencode(" ");
     generate_expression_code(this, varres.expr);
-    WRITE_CODE(";");
+    gencode(";");
 }
 
 void generate_node(CodeGenerator *this, Node *n, bool infuncbody) {
@@ -424,30 +459,40 @@ void generate_node(CodeGenerator *this, Node *n, bool infuncbody) {
         return generate_varres(this, n->as.varres);
     }
 
-    //FIXME: error 
-    // INVALID
-    abort();
+    UNREACHABLE();
 }
 
 void generate(CodeGenerator *this) {
+    if(!createdir("./dist")) {
+        perror("creating dir failed");
+        exit(EXIT_FAILURE);
+    }
+
+    FILE *f = fopen(this->state.filename, "w");
+    if(!f) {
+        perror("fopen failed");
+        exit(EXIT_FAILURE);
+    }
+
+    this->state.f = f;
+    
     // push the global transpiler context
     gcontext_push(this->gcontext);
 
     // include the includes root file
-    WRITE_CODE("#include \"./root.h\"\n\n");
+    gencode("#include \"./root.h\"\n\n");
 
     for(size_t i = 0; i < this->tree->count; ++i) {
         Node *n = this->tree->items[i];
         generate_node(this, n, false);
-        WRITE_CODE("\n");
+        gencode("\n");
     }
 
     if(this->gcontext->includes.count == 0) { 
         return;
     }
 
-    bool success = createdir("./dist/include");
-    if(!success) {
+    if(!createdir("./dist/include")) {
         perror("creating dir failed");
         exit(EXIT_FAILURE);
     }
@@ -473,7 +518,7 @@ void generate(CodeGenerator *this) {
             exit(EXIT_FAILURE);
         }
 
-        // update the root  file
+        // update the root file
         char include[FILENAME_MAX] = {0};
         snprintf(include, sizeof(include), "#include" " " "\"./include/" SV_FMT "\"", SV_UNWRAP(filename)); 
         fwrite(include, sizeof(char), strlen(include), root);

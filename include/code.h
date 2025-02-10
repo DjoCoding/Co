@@ -8,7 +8,7 @@
 
 typedef struct {
     size_t indent;
-    const char *filpath;
+    const char *filename;
     FILE *f;
 } CodeGeneratorState;
 
@@ -18,8 +18,8 @@ typedef struct {
     CodeGeneratorState state;
 } CodeGenerator;
 
-CodeGenerator *code(AST *tree);
-void code_setup(CodeGenerator *this, const char *filepath);
+CodeGenerator *code(const char *filename);
+void code_set_tree(CodeGenerator *this, AST *tree);
 void generate(CodeGenerator *this);
 
 #endif

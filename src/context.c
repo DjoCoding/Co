@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "malloc.h"
-#include "coerror.h"
 
 Context context() {
     Context ctx = {0};

@@ -7,7 +7,7 @@
 #include "shared.h"
 
 // this for the parser instance
-#define expect(kind) throw(error(PARSER, errfromparser(parserror(kind, EXPECTED_TOKEN_KIND_BUT_FOUND_ANOTHER, this))))
+#define expect(kind) throw(error(PARSER, errfromparser(parserror(kind, EXPECTED_TOKEN_KIND_BUT_FOUND_ANOTHER, this)), this->filename))
 
 Parser *parser(const char *filename) {
     Parser *this = alloc(sizeof(Parser));
@@ -24,7 +24,6 @@ void parser_set_tokens(Parser *this, ARRAY_OF(Token) tokens) {
 ParserError parserror(TokenKind kind, ErrorCode code, Parser *this) {
     ParserError err = {0};
     err.code = code;
-    err.filename = this->filename;
     err.expectedkind = kind;
     err.currtoken = this->tokens.items[this->current];
     return err;
@@ -78,7 +77,8 @@ Type parse_type(Parser *this) {
                     UNKNOWN_TYPE_NAME,
                     this
                 )
-            )
+            ), 
+            this->filename
         )
     );
 
@@ -144,7 +144,8 @@ Expression *parse_primary(Parser *this) {
                     EXPECTED_EXPRESSION,
                     this
                 )
-            )
+            ), 
+            this->filename
         )
     );
     
@@ -656,7 +657,8 @@ Node *parse_node(Parser *this, bool infuncbody) {
                     INVALID_START_OF_STATEMENT,
                     this
                 )
-            )
+            ), 
+            this->filename
         )
     );
 

@@ -15,7 +15,6 @@ ContextError contexterror(ErrorCode code, SV name, CodeGeneratorContext *gcontex
     return (ContextError) {
         .code = code,
         .name = name,
-        .filename = gcontext->filename
     };
 }
 
@@ -30,7 +29,8 @@ void context_pushvar(Context *this, ContextVariable ctxvar) {
 ContextFunction contextfunc(FunctionDeclaration func) {
     return (ContextFunction) {
         .name = func.name, 
-        .params = func.params
+        .params = func.params,
+        .rettype = func.rettype,
     };
 }
 
@@ -147,7 +147,8 @@ void gcontext_pushfunc(CodeGeneratorContext *this, ContextFunction func) {
                         func.name,
                         this
                     )
-                )
+                ), 
+                this->filename
             )
         );
 
@@ -173,7 +174,8 @@ void gcontext_pushvar(CodeGeneratorContext *this, ContextVariable var) {
                         var.name,
                         this
                     )
-                )
+                ), 
+                this->filename
             )
         );
 

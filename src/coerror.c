@@ -1,5 +1,6 @@
 #include "coerror.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include "malloc.h"
 #include "sv.h"
@@ -46,10 +47,11 @@ ErrorFrom errfromtype(TypeError err) {
 }
 
 
-Error error(Stage stage, ErrorFrom from) {
+Error error(Stage stage, ErrorFrom from, SV filename) {
     return(Error) {
         .stage = stage, 
-        .from = from
+        .from = from,
+        .filename = filename
     };
 }
 
@@ -59,14 +61,8 @@ char *allocmes() {
     return m;
 }
 
-void throw_lexerr(LexerError err) {
-    // for message: global message displayed on the screen
-    char *m = allocmes();
-
-    // view on the message, to perform operations on it
-    SV mview = svc(m);
-
-    append(mview, SV_FMT ":%zu:%zu:", SV_UNWRAP(err.filename), err.loc.line, err.loc.offset);
+SV throw_lexerr(SV mview, LexerError err) {
+    append(mview, ":%zu:%zu:", err.loc.line, err.loc.offset);
 
     append(mview, " ");
     append(mview, red("error:"));
@@ -94,18 +90,12 @@ void throw_lexerr(LexerError err) {
         default:
             UNREACHABLE();
     }
-    
-    fprintf(stderr, SV_FMT "\n", SV_UNWRAP(mview));
-    free(m);
 
-    exit(EXIT_FAILURE);
+    return mview;
 }
 
-void throw_parserr(ParserError err) {
-    char *m = allocmes();
-    SV mview = svc(m);
-
-    append(mview, SV_FMT ":%zu:%zu:", SV_UNWRAP(err.filename), err.currtoken.loc.line, err.currtoken.loc.offset);
+SV throw_parserr(SV mview, ParserError err) {
+    append(mview, ":%zu:%zu:", err.currtoken.loc.line, err.currtoken.loc.offset);
 
     append(mview, " ");
     append(mview, red("error:"));
@@ -142,18 +132,10 @@ void throw_parserr(ParserError err) {
             UNREACHABLE()
     }
 
-    fprintf(stderr, SV_FMT "\n", SV_UNWRAP(mview));
-    free(m);
-
-    exit(EXIT_FAILURE);
+    return mview;
 }
 
-void throw_contexterr(ContextError err) {
-    char *m = allocmes();
-    SV mview = svc(m);
-
-    append(mview, SV_FMT ":", SV_UNWRAP(err.filename));
-
+SV throw_contexterr(SV mview, ContextError err) {
     append(mview, " ");
     append(mview, red("error:"));
     append(mview, " ");
@@ -165,28 +147,86 @@ void throw_contexterr(ContextError err) {
         case VARIABLE_ALREADY_DECLARED:
             append(mview, "variable `" red(SV_FMT) "` already declared within the same scope", SV_UNWRAP(err.name));
             break;
+        case VARIABLE_NOT_DECLARED:
+            append(
+                mview, 
+                "variable `" red(SV_FMT) "` not yet defined", 
+                SV_UNWRAP(err.name)
+            );
+            break;
+        case FUNCTION_NOT_DECLARED:
+            append(
+                mview,
+                "function `" red(SV_FMT) "` not yet defined", 
+                SV_UNWRAP(err.name)
+            );
+            break;
+        case INVALID_NUMBER_OF_PARAMS:  
+            append(
+                mview, 
+                "invalid number of arguments passed to function `" red(SV_FMT) "`",
+                SV_UNWRAP(err.name)
+            );
+            break;
         default:
             UNREACHABLE()
     }
 
-    fprintf(stderr, SV_FMT "\n", SV_UNWRAP(mview));
-    free(m);
+    return mview;
+}
 
-    exit(EXIT_FAILURE);
+SV throw_typerr(SV mview, TypeError err) {
+    switch(err.code) {
+        case TYPE_ERROR:
+            append(
+                mview, 
+                "invalid type, expected `" blue(SV_FMT) "` but got `" red(SV_FMT) "`", 
+                SV_UNWRAP(err.expectedtype),
+                SV_UNWRAP(err.foundtype) 
+            );
+            break;
+        case INVALID_OPERATION_BETWEEN_TYPES:
+            append(
+                mview, 
+                "invalid operation between `" red(SV_FMT) "` and `" red(SV_FMT) "` types",
+                SV_UNWRAP(err.expectedtype),
+                SV_UNWRAP(err.foundtype)
+            );
+            break;
+        default:
+            UNREACHABLE();
+    }
+
+    return mview;
 }
 
 
 void throw(Error err) {
+    char *m = allocmes();
+    SV mview = svc(m);
+
+    append(mview, SV_FMT, SV_UNWRAP(err.filename));
+
     switch(err.stage) {
         case LEXER: 
-            return throw_lexerr(err.from.lexer);
+            mview = throw_lexerr(mview, err.from.lexer);
+            break;
         case PARSER:
-            return throw_parserr(err.from.parser);
+            mview = throw_parserr(mview, err.from.parser);
+            break;
         case CONTEXT:
-            return throw_contexterr(err.from.context);
+            mview = throw_contexterr(mview, err.from.context);
+            break;
+        case TYPE:
+            mview = throw_typerr(mview, err.from.type);
+            break;
         default:
             TODO("throw errors not fully implemented");
     }
+
+    fprintf(stderr, SV_FMT "\n", SV_UNWRAP(mview));
+    free(m);
+    exit(EXIT_FAILURE);
 }
 
 void report(Error err) {

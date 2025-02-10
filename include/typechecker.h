@@ -4,10 +4,12 @@
 #include <stdbool.h>
 #include "node.h"
 #include "coerror.h"
+#include "context.h"
 
-bool typecheck(Type type, Expression *e);
-TypeError typerror(ErrorCode code, SV expectedtype, SV foundtype, SV filename);
+TypeError typerror(ErrorCode code, SV expectedtype, SV foundtype);
+bool typecheckexpr(CodeGeneratorContext *gcontext, Type type, Expression *e);
+Type typeOf(CodeGeneratorContext *gcontext, Expression *e);
+bool typecmpop(Type a, Type b, Operation op);
 const char *strtype(Type t);
-Type typeOf(Expression *e);
 
 #endif

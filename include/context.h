@@ -9,6 +9,7 @@
 typedef struct {
     SV name;
     ARRAY_OF(Parameter) params;
+    Type rettype;
 } ContextFunction;
 DEF_ARRAY(ContextFunction);
 

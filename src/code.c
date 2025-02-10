@@ -11,14 +11,15 @@
 // this macro will get the this object in the current context as not declared dependency
 #define gencode(...) fprintf(this->state.f, __VA_ARGS__)
 
-CodeGenerator *code(const char *filename) {
+CodeGenerator *code(const char *input, const char *output) {
     CodeGenerator *c = alloc(sizeof(CodeGenerator));
     c->tree = NULL;
     c->gcontext = gcontext();
     c->state.f = stdout;
     c->state = (CodeGeneratorState) {0};
-    c->state.filename = filename;
-    gcontextfile(c->gcontext, filename);
+    c->state.output = output;
+    c->state.input = input;
+    gcontextfile(c->gcontext, output);
     return c;
 }
 
@@ -40,6 +41,26 @@ void generate_expression_code(CodeGenerator *this, Expression *e);
 void generate_type(CodeGenerator *this, Type type);
 
 void generate_binop_expression_code(CodeGenerator *this, BinOpExpression binop) {
+    Type lhstype = typeOf(this->gcontext, binop.lhs);
+    Type rhstype = typeOf(this->gcontext, binop.rhs);
+    bool result = typecmpop(lhstype, rhstype, binop.op);
+
+    if(!result) {
+        throw(
+            error(
+                TYPE,
+                errfromtype(
+                    typerror(
+                        INVALID_OPERATION_BETWEEN_TYPES,
+                        svc((char *)strtype(lhstype)),
+                        svc((char *)strtype(rhstype))
+                    )
+                ), 
+                svc((char *)this->state.input)
+            )
+        );
+    }
+
     gencode("(");
     generate_expression_code(this, binop.lhs);
     gencode(" ");
@@ -109,7 +130,7 @@ void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
             gencode("bool");
             break;
         default:
-            assert(false && "unreachable");
+            UNREACHABLE();
     }
 }
 
@@ -199,7 +220,8 @@ void generate_varvalue(CodeGenerator *this, SV varname) {
                         varname,
                         this->gcontext
                     )
-                )
+                ),
+                svc((char *)this->state.input)
             )
         );
         return;
@@ -220,7 +242,8 @@ void generate_funccall(CodeGenerator *this, FunctionCall funccall, bool inexpr) 
                         funccall.name,
                         this->gcontext
                     )
-                )
+                ), 
+                svc((char *)this->state.input)
             )
         );
         return;
@@ -236,7 +259,8 @@ void generate_funccall(CodeGenerator *this, FunctionCall funccall, bool inexpr) 
                         funccall.name,
                         this->gcontext
                     )
-                )
+                ), 
+                svc((char *)this->state.input)
             )
         );
         return;
@@ -245,7 +269,7 @@ void generate_funccall(CodeGenerator *this, FunctionCall funccall, bool inexpr) 
     for(size_t i = 0; i < func->params.count; ++i) {
         Parameter p = func->params.items[i];
         Argument arg = funccall.args.items[i];
-        if(!typecheck(p.type, arg.e)) { 
+        if(!typecheckexpr(this->gcontext, p.type, arg.e)) { 
             throw(
                 error(
                     TYPE,
@@ -253,10 +277,10 @@ void generate_funccall(CodeGenerator *this, FunctionCall funccall, bool inexpr) 
                         typerror(
                             TYPE_ERROR,
                             svc((char *)strtype(p.type)),
-                            svc((char *)strtype(typeOf(arg.e))),
-                            svc((char *)this->state.filename)
+                            svc((char *)strtype(typeOf(this->gcontext, arg.e)))
                         )
-                    )
+                    ),
+                    svc((char *)this->state.input)
                 )
             );
             return;
@@ -279,7 +303,8 @@ void generate_funcdecl(CodeGenerator *this, FunctionDeclaration funcdecl) {
                         funcdecl.name,
                         this->gcontext
                     )
-                )
+                ),
+                svc((char *)this->state.input)
             )
         );
         return;
@@ -318,7 +343,8 @@ void crash_on_varfound(CodeGenerator *this, SV name) {
                         name,
                         this->gcontext
                     )
-                )
+                ),
+                svc((char *)this->state.input)
             )
         );
         return;
@@ -468,7 +494,7 @@ void generate(CodeGenerator *this) {
         exit(EXIT_FAILURE);
     }
 
-    FILE *f = fopen(this->state.filename, "w");
+    FILE *f = fopen(this->state.output, "w");
     if(!f) {
         perror("fopen failed");
         exit(EXIT_FAILURE);

@@ -55,7 +55,6 @@ LexerError lexerror(ErrorCode code, Lexer *this) {
     return (LexerError) {
         .code = code,
         .current = this->current,
-        .filename = this->filename,
         .loc = this->loc,
         .lasttok = this->currentok,
     };
@@ -153,7 +152,8 @@ Token trylexstring(Lexer *this) {
             throw(
                 error(
                     LEXER, 
-                    errfromlexer(lexerror(INVALID_STRING, this))
+                    errfromlexer(lexerror(INVALID_STRING, this)),
+                    this->filename
                 )
             );
             return TOKEN_NONE;
@@ -204,7 +204,8 @@ Token ltoken(Lexer *this) {
     throw(
         error(
             LEXER, 
-            errfromlexer(lexerror(INVALID_TOKEN, this))
+            errfromlexer(lexerror(INVALID_TOKEN, this)),
+            this->filename
         )
     );
 

@@ -31,12 +31,12 @@ typedef enum {
     FUNCTION_NOT_DECLARED,
     INVALID_NUMBER_OF_PARAMS,
     TYPE_ERROR,
+    INVALID_OPERATION_BETWEEN_TYPES,
     INVALID_START_OF_STATEMENT
 } ErrorCode;
 
 typedef struct {
     ErrorCode code;
-    SV filename;
     Location loc;
     size_t current;
     Token lasttok;
@@ -44,19 +44,16 @@ typedef struct {
 
 typedef struct {
     Token currtoken;
-    SV filename;
     ErrorCode code;
     TokenKind expectedkind;
 } ParserError;
 
 typedef struct {
-    SV filename;
     ErrorCode code;
     SV name;
 } ContextError;
 
 typedef struct {
-    SV filename;
     ErrorCode code;
     SV expectedtype;
     SV foundtype;
@@ -72,13 +69,14 @@ typedef union {
 typedef struct {
     Stage stage;
     ErrorFrom from;
+    SV filename;
 } Error;
 
 ErrorFrom errfromlexer(LexerError err);
 ErrorFrom errfromparser(ParserError err);
 ErrorFrom errfromcontext(ContextError err);
 ErrorFrom errfromtype(TypeError err);
-Error error(Stage stage, ErrorFrom from);
+Error error(Stage stage, ErrorFrom from, SV filename);
 void throw(Error err);
 void report(Error err);
 

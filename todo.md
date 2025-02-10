@@ -14,3 +14,4 @@
 
 [ ] work on oop things
 
+[ ] check the function return type first, before you generate the code for it

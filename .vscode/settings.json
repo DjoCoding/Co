@@ -23,7 +23,8 @@
         "cwchar": "c",
         "new": "c",
         "shared.h": "c",
-        "system_error": "c"
+        "system_error": "c",
+        "typeinfo": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

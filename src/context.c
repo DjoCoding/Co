@@ -3,12 +3,21 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "malloc.h"
+#include "coerror.h"
 
 Context context() {
     Context ctx = {0};
     ctx.functions = ARRAY(ContextFunction);
     ctx.variables = ARRAY(ContextVariable);
     return ctx;
+}
+
+ContextError contexterror(ErrorCode code, SV name, CodeGeneratorContext *gcontext) {
+    return (ContextError) {
+        .code = code,
+        .name = name,
+        .filename = gcontext->filename
+    };
 }
 
 void context_pushfunc(Context *this, ContextFunction ctxfunc) {
@@ -67,31 +76,14 @@ Parameter *context_findparam(Context *this, SV paramname) {
     return NULL;
 }
 
-// ContextFunction *getfuncfromcall(Context *this, FunctionCall funccall) {
-//     ContextFunction *func = context_findfunc(this, funccall.name);
-//     if(!func) {
-//         //FIXME: error 
-//         abort();
-//     }
-
-//     if(func->params.count != funccall.args.count) {
-//         //FIXME: error
-//         abort();
-//     }
-
-//     for(size_t i = 0; i < func->params.count; ++i) {
-//         Parameter p = func->params.items[i];
-//         context_pushvar(this, (ContextVariable) {
-//             .name = p.name, 
-//             .type = p.type,
-//         })        
-//     }
-// }
-
 CodeGeneratorContext *gcontext() {
     CodeGeneratorContext *gctx = alloc(sizeof(CodeGeneratorContext));
     gctx->ctxs = ARRAY(Context);
     return gctx;
+}
+
+void gcontextfile(CodeGeneratorContext *this, const char *filename) {
+    this->filename = svc((char *)filename);
 }
 
 ContextFunction *gcontext_findfunc(CodeGeneratorContext *this, SV funcname) {
@@ -145,7 +137,25 @@ void gcontext_pushfunc(CodeGeneratorContext *this, ContextFunction func) {
         gcontext_push(this);
     }
 
-    context_pushfunc(gcontext_tos(this), func);
+    ContextFunction *f = context_findfunc(gcontext_tos(this), func.name);
+    if(f) {
+        throw(
+            error(
+                CONTEXT,
+                errfromcontext(
+                    contexterror(
+                        FUNCTION_ALREADY_DECLARED,
+                        func.name,
+                        this
+                    )
+                )
+            )
+        );
+
+        return;
+    }
+
+    return context_pushfunc(gcontext_tos(this), func);
 }
 
 void gcontext_pushvar(CodeGeneratorContext *this, ContextVariable var) {
@@ -155,9 +165,20 @@ void gcontext_pushvar(CodeGeneratorContext *this, ContextVariable var) {
 
     ContextVariable *v = context_findvar(gcontext_tos(this), var.name);
     if(v) {
-        //FIXME: raise error
-        // variable already declared
-        abort();
+        throw(
+            error(
+                CONTEXT,
+                errfromcontext(
+                    contexterror(
+                        VARIABLE_ALREADY_DECLARED,
+                        var.name,
+                        this
+                    )
+                )
+            )
+        );
+
+        return;
     }
 
     context_pushvar(gcontext_tos(this), var);

@@ -28,6 +28,7 @@ bool code_open_outfile(CodeGenerator *this) {
 
 void code_setfilepath(CodeGenerator *this, const char *filepath) {
     this->state.filpath = filepath;
+    gcontextfile(this->gcontext, filepath);
     bool success = code_open_outfile(this);
     if(!success) {
         //FIXME: error 

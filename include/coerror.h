@@ -12,6 +12,7 @@
 typedef enum {
     LEXER = 0,
     PARSER,
+    CONTEXT,
     CODE_GENERATOR
 } Stage;
 
@@ -22,6 +23,9 @@ typedef enum {
     UNKNOWN_TYPE_NAME,
     EXPECTED_TOKEN_KIND_BUT_FOUND_ANOTHER,
     EXPECTED_EXPRESSION,
+    FUNCTION_ALREADY_DECLARED,
+    VARIABLE_ALREADY_DECLARED,
+    INVALID_START_OF_STATEMENT
 } ErrorCode;
 
 typedef struct {
@@ -32,17 +36,23 @@ typedef struct {
     Token lasttok;
 } LexerError;
 
-struct ParserError2 {
+typedef struct {
     Token currtoken;
     SV filename;
     ErrorCode code;
     TokenKind expectedkind;
-};
-typedef struct ParserError2 ParserError;
+} ParserError;
+
+typedef struct {
+    SV filename;
+    ErrorCode code;
+    SV name;
+} ContextError;
 
 typedef union {
     LexerError lexer;
     ParserError parser;
+    ContextError context;
 } ErrorFrom;
 
 typedef struct {
@@ -52,6 +62,7 @@ typedef struct {
 
 ErrorFrom errfromlexer(LexerError err);
 ErrorFrom errfromparser(ParserError err);
+ErrorFrom errfromcontext(ContextError err);
 Error error(Stage stage, ErrorFrom from);
 void throw(Error err);
 void report(Error err);

@@ -1,5 +1,3 @@
 fn main(): int {
-    string a = "Hello"
-    int b = 1 + 
-    return 1
+    return 1;
 }

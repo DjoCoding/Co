@@ -27,11 +27,18 @@ ErrorFrom errfromlexer(LexerError err) {
     };
 } 
 
-inline ErrorFrom errfromparser(ParserError err) {
+ErrorFrom errfromparser(ParserError err) {
     return (ErrorFrom) {
         .parser = err
     };
 }
+
+ErrorFrom errfromcontext(ContextError err) {
+    return (ErrorFrom) {
+        .context = err,
+    };
+}
+
 
 Error error(Stage stage, ErrorFrom from) {
     return(Error) {
@@ -118,6 +125,13 @@ void throw_parserr(ParserError err) {
                 SV_UNWRAP(err.currtoken.value)
             );
             break;
+        case INVALID_START_OF_STATEMENT:
+            append(
+                mview,
+                "invalid start of statement, starts with `" red(SV_FMT) "`",
+                SV_UNWRAP(err.currtoken.value)
+            );
+            break;
         default:
             UNREACHABLE()
     }
@@ -128,12 +142,42 @@ void throw_parserr(ParserError err) {
     exit(EXIT_FAILURE);
 }
 
+void throw_contexterr(ContextError err) {
+    char *m = allocmes();
+    SV mview = svc(m);
+
+    append(mview, SV_FMT ":", SV_UNWRAP(err.filename));
+
+    append(mview, " ");
+    append(mview, red("error:"));
+    append(mview, " ");
+
+    switch (err.code) {
+        case FUNCTION_ALREADY_DECLARED:
+            append(mview, "function `" red(SV_FMT) "` already declared within the same scope", SV_UNWRAP(err.name));
+            break;
+        case VARIABLE_ALREADY_DECLARED:
+            append(mview, "variable `" red(SV_FMT) "` already declared within the same scope", SV_UNWRAP(err.name));
+            break;
+        default:
+            UNREACHABLE()
+    }
+
+    fprintf(stderr, SV_FMT "\n", SV_UNWRAP(mview));
+    free(m);
+
+    exit(EXIT_FAILURE);
+}
+
+
 void throw(Error err) {
     switch(err.stage) {
         case LEXER: 
             return throw_lexerr(err.from.lexer);
         case PARSER:
             return throw_parserr(err.from.parser);
+        case CONTEXT:
+            return throw_contexterr(err.from.context);
         default:
             TODO("throw errors not fully implemented");
     }

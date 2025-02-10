@@ -30,6 +30,7 @@ typedef struct {
 DEF_ARRAY(Include);
 
 typedef struct { 
+    SV filename;
     ARRAY_OF(Context) ctxs;
     ARRAY_OF(Include) includes;
 } CodeGeneratorContext;
@@ -48,6 +49,7 @@ Parameter *context_findparam(Context *this, SV paramname);
 Include include(SV name, bool isstd);
 
 CodeGeneratorContext *gcontext();
+void gcontextfile(CodeGeneratorContext *this, const char *filename);
 void gcontext_push(CodeGeneratorContext *this);
 ContextFunction *gcontext_findfunc(CodeGeneratorContext *this, SV funcname);
 ContextVariable *gcontext_findvar(CodeGeneratorContext *this, SV varname);

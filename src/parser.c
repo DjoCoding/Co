@@ -659,7 +659,7 @@ Node *parse_node(Parser *this, bool infuncbody) {
             errfromparser(
                 parserror(
                     TOKEN_KIND_NONE,
-                    INVALID_TOKEN,
+                    INVALID_START_OF_STATEMENT,
                     this
                 )
             )

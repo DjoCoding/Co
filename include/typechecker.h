@@ -11,5 +11,6 @@ bool typecheckexpr(CodeGeneratorContext *gcontext, Type type, Expression *e);
 Type typeOf(CodeGeneratorContext *gcontext, Expression *e);
 bool typecmpop(Type a, Type b, Operation op);
 const char *strtype(Type t);
+bool iscostring(Type t);
 
 #endif

@@ -30,6 +30,10 @@ bool typecmp_predef(PreDefinedType a, PreDefinedType b, Operation op) {
     return false;
 }
 
+bool iscostring(Type t) {
+    return (t.kind == TYPE_KIND_PRE_DEFINED && t.as.predef == PRE_DEFINED_TYPE_STRING); 
+}
+
 // check if the operation is valid on the types
 bool typecmpop(Type a, Type b, Operation op) {
     if(a.kind != b.kind) { return false; }

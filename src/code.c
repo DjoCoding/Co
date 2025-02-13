@@ -61,6 +61,21 @@ void generate_binop_expression_code(CodeGenerator *this, BinOpExpression binop) 
         );
     }
 
+    if(iscostring(lhstype) && iscostring(rhstype)) {
+        // this should raise an error, but im sure this will be handled by the typechecker
+        if(binop.op != OPERATION_ADD) { return; }
+
+        // predefined function name
+        gencode("costring_concat");
+        gencode("(");
+        generate_expression_code(this, binop.lhs);
+        gencode(",");
+        gencode(" ");
+        generate_expression_code(this, binop.rhs);
+        gencode(")");
+        return;
+    }
+
     gencode("(");
     generate_expression_code(this, binop.lhs);
     gencode(" ");
@@ -77,7 +92,10 @@ void generate_expression_code(CodeGenerator *this, Expression *e) {
     }
 
     if(e->kind == EXPRESSION_KIND_STRING) {
+        gencode("costring");
+        gencode("(");
         gencode("\"" SV_FMT "\"", SV_UNWRAP(e->as.string));
+        gencode(")");
         return;
     }
 
@@ -123,7 +141,7 @@ void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
             break;
         case PRE_DEFINED_TYPE_STRING:
             gcontext_pushinclude(this->gcontext, include(svc("costring.h"), false));
-            gencode("string");
+            gencode("CoString");
             break;
         case PRE_DEFINED_TYPE_BOOL:
             gcontext_pushinclude(this->gcontext, include(svc("stdbool.h"), true));
@@ -545,9 +563,16 @@ void generate(CodeGenerator *this) {
         }
 
         // update the root file
-        char include[FILENAME_MAX] = {0};
-        snprintf(include, sizeof(include), "#include" " " "\"./include/" SV_FMT "\"", SV_UNWRAP(filename)); 
-        fwrite(include, sizeof(char), strlen(include), root);
+        char buffer[FILENAME_MAX] = {0};
+        snprintf(buffer, sizeof(buffer), "#define STD_COSTRING_IMPLEMENTATION\n");
+        fwrite(buffer, sizeof(char), strlen(buffer), root);
+
+        
+        memset(buffer, 0, sizeof(buffer));
+        snprintf(buffer, sizeof(buffer), "#include" " " "\"./include/" SV_FMT "\"\n", SV_UNWRAP(filename)); 
+        fwrite(buffer, sizeof(char), strlen(buffer), root);
+
+        fwrite("\n", sizeof(char), strlen("\n"), root);
     }
 
     fclose(root);

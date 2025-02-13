@@ -1,5 +1,5 @@
 fn main(): int {
     string a = "hello"
     string b = a + " world"
-    return a   
+    return 0
 }

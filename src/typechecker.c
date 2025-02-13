@@ -13,7 +13,7 @@ bool typecheckexpr(CodeGeneratorContext *gcontext, Type type, Expression *e) {
     return true;
 }
 
-bool typecmp_predef(PreDefinedType a, PreDefinedType b, Operation op) {
+bool typecmpop_on_predef(PreDefinedType a, PreDefinedType b, Operation op) {
     switch(a) {
         case PRE_DEFINED_TYPE_INT:
             if(b == PRE_DEFINED_TYPE_INT) return true;
@@ -34,12 +34,22 @@ bool iscostring(Type t) {
     return (t.kind == TYPE_KIND_PRE_DEFINED && t.as.predef == PRE_DEFINED_TYPE_STRING); 
 }
 
+bool typecmp(CodeGeneratorContext *gcontext, Type a, Type b) {
+    if(a.kind != b.kind) { return false; }
+
+    if(a.kind == TYPE_KIND_PRE_DEFINED) {
+        return a.as.predef == b.as.predef;
+    }
+
+    UNREACHABLE();
+}
+
 // check if the operation is valid on the types
 bool typecmpop(Type a, Type b, Operation op) {
     if(a.kind != b.kind) { return false; }
     switch(a.kind) {
         case TYPE_KIND_PRE_DEFINED:
-            return typecmp_predef(a.as.predef, b.as.predef, op);
+            return typecmpop_on_predef(a.as.predef, b.as.predef, op);
         default:
             return false;
     }

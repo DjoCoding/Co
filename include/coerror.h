@@ -20,19 +20,29 @@ typedef enum {
 
 typedef enum {
     ERROR_CODE_NONE = 0,
+
+    // lexing related error codes
     INVALID_TOKEN,
     INVALID_STRING,
     UNKNOWN_TYPE_NAME,
+
+    // parsing related error codes
+    INVALID_START_OF_STATEMENT,
     EXPECTED_TOKEN_KIND_BUT_FOUND_ANOTHER,
     EXPECTED_EXPRESSION,
+
+    // context related error codes
     FUNCTION_ALREADY_DECLARED,
     VARIABLE_ALREADY_DECLARED,
     VARIABLE_NOT_DECLARED,
     FUNCTION_NOT_DECLARED,
     INVALID_NUMBER_OF_PARAMS,
+
+    // type checking error codes
+    INVALID_EXPRESSION_TYPE_ON_ASSIGNEMENT,
     TYPE_ERROR,
     INVALID_OPERATION_BETWEEN_TYPES,
-    INVALID_START_OF_STATEMENT
+    INVALID_RETURN_TYPE_OF_FUNCTION
 } ErrorCode;
 
 typedef struct {

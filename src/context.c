@@ -78,11 +78,23 @@ Parameter *context_findparam(Context *this, SV paramname) {
 CodeGeneratorContext *gcontext() {
     CodeGeneratorContext *gctx = alloc(sizeof(CodeGeneratorContext));
     gctx->ctxs = ARRAY(Context);
+    gctx->filename = SV_NULL;
+    gctx->includes = ARRAY(Include);
     return gctx;
 }
 
 void gcontextfile(CodeGeneratorContext *this, const char *filename) {
     this->filename = svc((char *)filename);
+}
+
+void gcontext_set_current_function(CodeGeneratorContext *this, ContextFunction func) {
+    this->inside_func = true;
+    this->currfunc = func;
+}
+
+// i liked the name of this function
+void gcontext_escape_function(CodeGeneratorContext *this) {
+    this->inside_func = false;
 }
 
 ContextFunction *gcontext_findfunc(CodeGeneratorContext *this, SV funcname) {

@@ -176,6 +176,10 @@ SV throw_contexterr(SV mview, ContextError err) {
 }
 
 SV throw_typerr(SV mview, TypeError err) {
+    append(mview, " ");
+    append(mview, red("error:"));
+    append(mview, " ");
+
     switch(err.code) {
         case TYPE_ERROR:
             append(
@@ -189,6 +193,22 @@ SV throw_typerr(SV mview, TypeError err) {
             append(
                 mview, 
                 "invalid operation between `" red(SV_FMT) "` and `" red(SV_FMT) "` types",
+                SV_UNWRAP(err.expectedtype),
+                SV_UNWRAP(err.foundtype)
+            );
+            break;
+        case INVALID_EXPRESSION_TYPE_ON_ASSIGNEMENT:
+            append(
+                mview,
+                "invalid assignement of type `" red(SV_FMT) "` to a variable of type `" blue(SV_FMT) "`",
+                SV_UNWRAP(err.foundtype),
+                SV_UNWRAP(err.expectedtype)
+            );
+            break;
+        case INVALID_RETURN_TYPE_OF_FUNCTION:
+            append(
+                mview,
+                "invalid return type to a function of type `" blue(SV_FMT) "`, found `" red(SV_FMT) "`",
                 SV_UNWRAP(err.expectedtype),
                 SV_UNWRAP(err.foundtype)
             );

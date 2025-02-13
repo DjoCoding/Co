@@ -220,6 +220,25 @@ void generate_vardec_code_inline(CodeGenerator *this, VariableDeclaration vardec
 }
 
 void generate_vardec_code(CodeGenerator *this, VariableDeclaration vardec) {
+    Type exprtype = typeOf(this->gcontext, vardec.expr);
+    if(!typecmp(this->gcontext, vardec.type, exprtype)) {
+        throw(
+            error(
+                TYPE,
+                errfromtype(
+                    typerror(
+                        INVALID_EXPRESSION_TYPE_ON_ASSIGNEMENT, 
+                        svc((char *)strtype(vardec.type)),
+                        svc((char *)strtype(exprtype))
+                    )
+                ),
+                svc((char *)this->state.input)
+            )
+        );
+
+        return;
+    }
+    
     generate_indent(this);
     generate_vardec_code_inline(this, vardec);
     gencode(";");
@@ -310,8 +329,8 @@ void generate_funccall(CodeGenerator *this, FunctionCall funccall, bool inexpr) 
 
 
 void generate_funcdecl(CodeGenerator *this, FunctionDeclaration funcdecl) {
-    ContextFunction *func = gcontext_findfunc(this->gcontext, funcdecl.name);
-    if(func) {
+    ContextFunction *found = gcontext_findfunc(this->gcontext, funcdecl.name);
+    if(found) {
         throw(
             error(
                 CONTEXT,
@@ -328,8 +347,12 @@ void generate_funcdecl(CodeGenerator *this, FunctionDeclaration funcdecl) {
         return;
     }
 
+    ContextFunction func = contextfunc(funcdecl);
+
     // push the function in the current context 
-    gcontext_pushfunc(this->gcontext, contextfunc(funcdecl));
+    gcontext_pushfunc(this->gcontext, func);
+
+    gcontext_set_current_function(this->gcontext, func);
 
     // push a new context for the function
     gcontext_push(this->gcontext);
@@ -347,6 +370,9 @@ void generate_funcdecl(CodeGenerator *this, FunctionDeclaration funcdecl) {
 
     // pop the function context
     gcontext_pop(this->gcontext);
+
+    // escape the current function
+    gcontext_escape_function(this->gcontext);
 }
 
 void crash_on_varfound(CodeGenerator *this, SV name) {
@@ -389,6 +415,31 @@ void generate_type(CodeGenerator *this, Type type) {
 }
 
 void generate_return(CodeGenerator *this, Return ret) {
+    if(!this->gcontext->inside_func) {
+        assert(false && "not inside function??? check the implementation of the function declaration, make sure to set this flag to true");
+    }
+
+    Type type = typeOf(this->gcontext, ret.expr);
+    Type rettype = this->gcontext->currfunc.rettype;
+
+    if(!typecmp(this->gcontext, rettype, type)) {
+        throw(
+            error(
+                TYPE,
+                errfromtype(
+                    typerror(
+                        INVALID_RETURN_TYPE_OF_FUNCTION,
+                        svc((char *)strtype(rettype)),
+                        svc((char *)strtype(type))
+                    )
+                ),
+                svc((char *)this->state.input)
+            )
+        );
+
+        return;
+    }
+
     generate_indent(this);
     gencode("return");
     gencode(" ");

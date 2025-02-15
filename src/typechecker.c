@@ -77,6 +77,10 @@ Type typeOf_variable(CodeGeneratorContext *gcontext, Variable var) {
     return v->type;
 }
 
+Type typeOf_array(CodeGeneratorContext *gcontext, Array a) {
+    TODO();
+}
+
 Type typeOf(CodeGeneratorContext *gcontext, Expression *e) {
     switch(e->kind) {
         case EXPRESSION_KIND_FUNCTION_CALL: 
@@ -107,6 +111,8 @@ Type typeOf(CodeGeneratorContext *gcontext, Expression *e) {
                 )
             );
             break;
+        case EXPRESSION_KIND_ARRAY:
+            return typeOf_array(gcontext, e->as.array);
         default:    
             UNREACHABLE();
     }

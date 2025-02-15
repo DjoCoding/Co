@@ -132,6 +132,62 @@ int parse_integer(SV value) {
     return result;
 }
 
+Array parse_array(Parser *this) {
+    assert(ppeek(this).kind == TOKEN_KIND_OPEN_BRACKET && "cannot find the [ token on array parsing");
+    padvance(this);
+
+    Array a = {0};
+
+    if(pexpect(this, TOKEN_KIND_CLOSE_BRACKET)) {
+        padvance(this);
+        return a;
+    }
+
+    while(!pend(this)) {
+        Expression *e = parse_expression(this);
+        APPEND(&a, e);
+
+        if(pexpect(this, TOKEN_KIND_CLOSE_BRACKET)) { 
+            break;
+        }
+
+        if(pexpect(this, TOKEN_KIND_COMMA)) { 
+            padvance(this);
+            continue;
+        }
+
+        // this will automatically get out of the loop and throw the error
+        break;
+    }
+
+    if(!pexpect(this, TOKEN_KIND_CLOSE_BRACKET)) {
+        throw(
+            error(
+                PARSER,
+                errfromparser(
+                    parserror(
+                        TOKEN_KIND_CLOSE_BRACKET,
+                        EXPECTED_TOKEN_KIND_BUT_FOUND_ANOTHER,
+                        this
+                    )
+                ), 
+                this->filename
+            )
+        );
+    }
+
+
+    // consume the ] token
+    padvance(this);
+
+    return a;
+}
+
+Expression *parse_array_expression(Parser *this) {
+    Array a = parse_array(this);
+    return expras_array(a);
+}
+
 Expression *parse_primary(Parser *this) {
     Token t = ppeek(this);
 
@@ -145,6 +201,11 @@ Expression *parse_primary(Parser *this) {
     if(t.kind == TOKEN_KIND_STRING) {
         padvance(this);
         return expras_string(t.value);
+    }
+
+
+    if(t.kind == TOKEN_KIND_OPEN_BRACKET) {
+        return parse_array_expression(this);
     }
 
     if(t.kind == TOKEN_KIND_OPEN_PAREN) {

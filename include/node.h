@@ -89,6 +89,7 @@ typedef enum {
     EXPRESSION_KIND_STRING,
     EXPRESSION_KIND_FUNCTION_CALL,
     EXPRESSION_KIND_VARIABLE,
+    EXPRESSION_KIND_ARRAY,
 } ExpressionKind;
 
 typedef enum {
@@ -103,7 +104,7 @@ typedef enum {
     OPERATION_GREATER_OR_EQ,
     OPERATION_EQ,
     OPERATIONS_COUNT,
-} Operation;
+} Operation; 
 
 typedef struct {
     SV name;
@@ -115,12 +116,19 @@ typedef struct {
     Operation op;
 } BinOpExpression;
 
+typedef struct {
+    Expression **items;
+    size_t count;
+    size_t size;
+} Array;
+
 typedef union {
     BinOpExpression binop;
     SV string;
     int integer;
     FunctionCall funccall;
     Variable var;
+    Array array;
 } ExpressionAs;
 
 struct Expression {
@@ -184,7 +192,7 @@ Expression *expras_binop(BinOpExpression binop);
 Expression *expras_integer(int integer);
 Expression *expras_funccall(FunctionCall funccall);
 Expression *expras_var(Variable var);
-
+Expression *expras_array(Array a);
 
 // construct type: array of <of> 
 Type arrayof(Type of);

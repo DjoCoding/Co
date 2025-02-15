@@ -65,6 +65,18 @@ void log_expr(Expression *expr) {
         return;
     }
 
+    if(expr->kind == EXPRESSION_KIND_ARRAY) {
+        printf("[");
+        for(size_t i = 0; i < expr->as.array.count; ++i) {
+            log_expr(expr->as.array.items[i]);
+            if(i == expr->as.array.count - 1) { break; }
+            printf(",");
+            printf(" ");
+        }
+        printf("]");
+        return;
+    }
+
     assert(false && "expression kind logging not implemented yet");
 }
 

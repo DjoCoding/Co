@@ -133,6 +133,15 @@ Expression *expras_var(Variable var) {
     );
 }
 
+Expression *expras_array(Array array) {
+    return expr(
+      EXPRESSION_KIND_ARRAY,
+      (ExpressionAs) {
+        .array = array
+      }
+    );
+}
+
 Type typeas_predef(PreDefinedType predef) {
     return (Type) {
         .kind = TYPE_KIND_PRE_DEFINED,

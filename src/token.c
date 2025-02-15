@@ -28,6 +28,8 @@ const char *token_kind_cstr[] = {
     "for",
     ";",
     ":=",
+    "[",
+    "]",
     "end"    
 };
 

@@ -13,6 +13,8 @@ typedef struct {
 } TokenKindValueObject;
 
 TokenKindValueObject pre_defined_tokens[] = {
+    { TOKEN_KIND_OPEN_BRACKET, "[" },
+    { TOKEN_KIND_CLOSE_BRACKET, "]" },
     { TOKEN_KIND_SEMI_COLON, ";" },
     { TOKEN_KIND_CLOSE_PAREN, ")" },
     { TOKEN_KIND_OPEN_PAREN, "(" },

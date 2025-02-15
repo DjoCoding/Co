@@ -1,4 +1,3 @@
 fn main(): int {
-    string a = "Hello"
-    return a
+    []int a
 }

@@ -41,6 +41,10 @@ bool typecmp(CodeGeneratorContext *gcontext, Type a, Type b) {
         return a.as.predef == b.as.predef;
     }
 
+    if(a.kind == TYPE_KIND_ARRAY) {
+        return typecmp(gcontext, *a.as.array.of, *b.as.array.of);
+    }
+
     UNREACHABLE();
 }
 

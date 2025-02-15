@@ -56,9 +56,47 @@ Node *parse_node(Parser *this, bool infuncbody);
 Expression *parse_addition(Parser *this);
 FunctionCall parse_function_call(Parser *this);
 Expression *parse_expression(Parser *this);
+Type parse_type(Parser *this);
+
+
+Type parse_array_type(Parser *this) {
+    assert(pexpect(this, TOKEN_KIND_OPEN_BRACKET) && "should start with the [ token");
+
+    padvance(this);
+    
+    if(!pexpect(this, TOKEN_KIND_CLOSE_BRACKET)) {
+        throw(
+            error(
+                PARSER,
+                errfromparser(
+                    parserror(
+                        TOKEN_KIND_CLOSE_BRACKET,
+                        EXPECTED_TOKEN_KIND_BUT_FOUND_ANOTHER,
+                        this
+                    )
+                ),
+                this->filename
+            )       
+        );
+    }
+
+    padvance(this);
+
+    // parse the array type
+    Type type = parse_type(this);
+
+    // construct the array type value
+    Type arraytype = arrayof(type);
+
+    return arraytype;
+}
 
 Type parse_type(Parser *this) {
     Token t = ppeek(this);
+
+    if(t.kind == TOKEN_KIND_OPEN_BRACKET) {
+        return parse_array_type(this);
+    }
 
     for(size_t i = 0; i < LENGTH(predeftypes); ++i) {
         PreDefinedTypeMap current = predeftypes[i];
@@ -634,6 +672,10 @@ Node *parse_node(Parser *this, bool infuncbody) {
         return parse_for_node(this);
     }
 
+    if(t.kind == TOKEN_KIND_OPEN_BRACKET) {
+        return parse_variable_declaration_node(this);
+    }
+
     if(t.kind == TOKEN_KIND_IDENTIFIER) {
         if(trypeakahead(this, 1).kind == TOKEN_KIND_OPEN_PAREN) {
             return parse_function_call_node(this);
@@ -666,7 +708,11 @@ Node *parse_node(Parser *this, bool infuncbody) {
 }
 
 Node *parse_root_node(Parser *this) {
-    return parse_node(this, false);
+    Node *n = parse_node(this, false);
+    while(ppeek(this).kind == TOKEN_KIND_SEMI_COLON) { 
+        padvance(this);
+    }
+    return n;
 }
 
 AST *parse_root(Parser *this) {

@@ -123,8 +123,10 @@ int main(int argc, char **argv) {
         log_ast(tree);
     }
 
-    transpiler_setup_generator(t);
-    transpiler_gencode(t);
+    if(global.gencode) {    
+        transpiler_setup_generator(t);
+        transpiler_gencode(t);
+    }
 
     return 0;
 }

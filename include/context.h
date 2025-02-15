@@ -5,6 +5,7 @@
 #include "sv.h"
 #include "node.h"
 #include "coerror.h"
+#include "colib.h"
 
 typedef struct {
     SV name;
@@ -16,6 +17,7 @@ DEF_ARRAY(ContextFunction);
 typedef struct {
     SV name;
     Type type;
+    bool isinitialized;
 } ContextVariable;
 DEF_ARRAY(ContextVariable);
 
@@ -25,9 +27,16 @@ typedef struct {
 } Context;
 DEF_ARRAY(Context);
 
+typedef SV StdLib;
+
+typedef union {
+    CoLib lib;
+    StdLib std;
+} IncludeAs;
+
 typedef struct {
-    SV name;
     bool isstd;
+    IncludeAs as;
 } Include;
 DEF_ARRAY(Include);
 
@@ -35,7 +44,7 @@ typedef struct {
     SV filename;                     // track the name of the file which this context is for
     ARRAY_OF(Context) ctxs;          // track the program stacks of context
     ARRAY_OF(Include) includes;      // track all the includes necessary when generating the code
-    ContextFunction currfunc;       // track the current function we're currently generating the code for
+    ContextFunction currfunc;        // track the current function we're currently generating the code for
     bool inside_func;                // track whether we're inside a function declaration or not
 } CodeGeneratorContext;
 

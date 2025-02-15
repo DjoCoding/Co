@@ -7,6 +7,9 @@
 #include "utils.h"
 #include "malloc.h"
 #include "coerror.h"
+#include "colib.h"
+
+#define BUFFER_MAX_SIZE FILENAME_MAX
 
 // this macro will get the this object in the current context as not declared dependency
 #define gencode(...) fprintf(this->state.f, __VA_ARGS__)
@@ -140,7 +143,7 @@ void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
             gencode("void");
             break;
         case PRE_DEFINED_TYPE_STRING:
-            gcontext_pushinclude(this->gcontext, include(svc("costring.h"), false));
+            gcontext_pushinclude(this->gcontext, include(svc("costring"), false));
             gencode("CoString");
             break;
         case PRE_DEFINED_TYPE_BOOL:
@@ -150,6 +153,14 @@ void generate_predef_type_code(CodeGenerator *this, PreDefinedType predef) {
         default:
             UNREACHABLE();
     }
+}
+
+void generate_array_type_code(CodeGenerator *this, ArrayType arraytype) {
+    gcontext_pushinclude(this->gcontext, include(svc("coarray"), false));
+    gencode("CoArray");
+    gencode("(");
+    generate_type(this, *arraytype.of);
+    gencode(")");
 }
 
 void generate_funcdecl_param_code(CodeGenerator *this, Parameter p) {
@@ -220,23 +231,25 @@ void generate_vardec_code_inline(CodeGenerator *this, VariableDeclaration vardec
 }
 
 void generate_vardec_code(CodeGenerator *this, VariableDeclaration vardec) {
-    Type exprtype = typeOf(this->gcontext, vardec.expr);
-    if(!typecmp(this->gcontext, vardec.type, exprtype)) {
-        throw(
-            error(
-                TYPE,
-                errfromtype(
-                    typerror(
-                        INVALID_EXPRESSION_TYPE_ON_ASSIGNEMENT, 
-                        svc((char *)strtype(vardec.type)),
-                        svc((char *)strtype(exprtype))
-                    )
-                ),
-                svc((char *)this->state.input)
-            )
-        );
+    if(vardec.expr) {
+        Type exprtype = typeOf(this->gcontext, vardec.expr);
+        if(!typecmp(this->gcontext, vardec.type, exprtype)) {
+            throw(
+                error(
+                    TYPE,
+                    errfromtype(
+                        typerror(
+                            INVALID_EXPRESSION_TYPE_ON_ASSIGNEMENT, 
+                            svc((char *)strtype(vardec.type)),
+                            svc((char *)strtype(exprtype))
+                        )
+                    ),
+                    svc((char *)this->state.input)
+                )
+            );
 
-        return;
+            return;
+        }
     }
     
     generate_indent(this);
@@ -411,6 +424,11 @@ void generate_type(CodeGenerator *this, Type type) {
     if(type.kind == TYPE_KIND_PRE_DEFINED) {
         return generate_predef_type_code(this, type.as.predef);
     }
+
+    if(type.kind == TYPE_KIND_ARRAY) {
+        return generate_array_type_code(this, type.as.array);
+    }
+
     TODO("implement custom types later on");
 }
 
@@ -557,18 +575,97 @@ void generate_node(CodeGenerator *this, Node *n, bool infuncbody) {
     UNREACHABLE();
 }
 
+void generate_stdlib_include(CodeGenerator *this, FILE *root, StdLib std) {
+    char buffer[BUFFER_MAX_SIZE] = {0};
+    snprintf(buffer, sizeof(buffer), "#include \"" SV_FMT "\"\n", SV_UNWRAP((SV) std));
+    fwrite(buffer, sizeof(char), strlen(buffer), root);
+    return;
+}
+
+void generate_colib_include(CodeGenerator *this, FILE *root, CoLib lib) {
+    const char *filename = headerof(lib);
+    const char *tag = tagof(lib);
+
+    char orgpath[BUFFER_MAX_SIZE] = {0};
+    char outpath[BUFFER_MAX_SIZE] = {0};
+
+    snprintf(orgpath, sizeof(orgpath), "./libs/%s.h", filename);
+    snprintf(outpath, sizeof(outpath), "./dist/include/%s.h", filename);
+
+    bool result = fcopy((const char *)orgpath, (const char *)outpath);
+    if(!result) {
+        perror("file copying failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // update the root file
+    char buffer[BUFFER_MAX_SIZE] = {0};
+    snprintf(buffer, sizeof(buffer), "#define %s\n", tag);
+    fwrite(buffer, sizeof(char), strlen(buffer), root);
+
+            
+    memset(buffer, 0, sizeof(buffer));
+    snprintf(buffer, sizeof(buffer), "#include \"./include/%s.h\"\n", filename); 
+    fwrite(buffer, sizeof(char), strlen(buffer), root);
+
+    fwrite("\n", sizeof(char), strlen("\n"), root);
+}
+
+void generate_include(CodeGenerator *this, FILE *root, Include inc) {
+    if(inc.isstd) {
+        return generate_stdlib_include(this, root, inc.as.std);
+    }
+
+    return generate_colib_include(this, root, inc.as.lib);
+}
+
+
+void generate_includes(CodeGenerator *this) {
+    // open the includes file
+    FILE *root = fopen("./dist/root.h", "w");
+    if(!root) { 
+        perror("fopen failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // no includes found (create the file only)
+    if(this->gcontext->includes.count == 0) { 
+        fclose(root);
+        return;
+    }
+
+    // create the includes directory
+    if(!createdir("./dist/include")) {
+        perror("creating dir failed");
+        exit(EXIT_FAILURE);
+    }
+
+
+    // for every file included, copy the file from the pre-build includes lib to the desired lib
+    for(size_t i = 0; i < this->gcontext->includes.count; ++i) {
+        Include inc = this->gcontext->includes.items[i];
+        generate_include(this, root, inc);
+    }
+
+
+    fclose(root);
+}
+
 void generate(CodeGenerator *this) {
+    // create the dist dir
     if(!createdir("./dist")) {
         perror("creating dir failed");
         exit(EXIT_FAILURE);
     }
 
+    // open the main file to write to
     FILE *f = fopen(this->state.output, "w");
     if(!f) {
         perror("fopen failed");
         exit(EXIT_FAILURE);
     }
 
+    // set it in the generator global context
     this->state.f = f;
     
     // push the global transpiler context
@@ -577,56 +674,17 @@ void generate(CodeGenerator *this) {
     // include the includes root file
     gencode("#include \"./root.h\"\n\n");
 
+    // generate all the nodes inside the main file
     for(size_t i = 0; i < this->tree->count; ++i) {
         Node *n = this->tree->items[i];
         generate_node(this, n, false);
         gencode("\n");
     }
+    
+    // generate the includes
+    generate_includes(this);
 
-    if(this->gcontext->includes.count == 0) { 
-        return;
-    }
-
-    if(!createdir("./dist/include")) {
-        perror("creating dir failed");
-        exit(EXIT_FAILURE);
-    }
-
-    FILE *root = fopen("./dist/root.h", "w");
-    if(!root) { 
-        perror("fopen failed");
-        exit(EXIT_FAILURE);
-    }
-
-    // for every file included, write its context in the file itself
-    for(size_t i = 0; i < this->gcontext->includes.count; ++i) {
-        SV filename = this->gcontext->includes.items[i].name;
-        char orgpath[FILENAME_MAX] = {0};
-        char outpath[FILENAME_MAX] = {0};
-
-        snprintf(orgpath, sizeof(orgpath), "./libs/" SV_FMT, SV_UNWRAP(filename));
-        snprintf(outpath, sizeof(outpath), "./dist/include/" SV_FMT, SV_UNWRAP(filename));
-
-        bool result = fcopy((const char *)orgpath, (const char *)outpath);
-        if(!result) {
-            perror("file copying failed");
-            exit(EXIT_FAILURE);
-        }
-
-        // update the root file
-        char buffer[FILENAME_MAX] = {0};
-        snprintf(buffer, sizeof(buffer), "#define STD_COSTRING_IMPLEMENTATION\n");
-        fwrite(buffer, sizeof(char), strlen(buffer), root);
-
-        
-        memset(buffer, 0, sizeof(buffer));
-        snprintf(buffer, sizeof(buffer), "#include" " " "\"./include/" SV_FMT "\"\n", SV_UNWRAP(filename)); 
-        fwrite(buffer, sizeof(char), strlen(buffer), root);
-
-        fwrite("\n", sizeof(char), strlen("\n"), root);
-    }
-
-    fclose(root);
+    // close the main file
     if(this->state.f != stdout) {
         fclose(this->state.f);
     }

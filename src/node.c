@@ -149,3 +149,16 @@ VariableDeclaration *vardec(Type type, SV name, Expression *value) {
     var->expr = value;
     return var;
 }
+
+Type arrayof(Type of) {
+    Type *t = alloc(sizeof(*t));
+    *t = of;
+    return (Type) {
+        .kind = TYPE_KIND_ARRAY,
+        .as = (TypeAs) {
+            .array = (ArrayType) {
+                .of = t
+            }
+        }
+    };
+}

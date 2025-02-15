@@ -35,6 +35,8 @@ typedef enum {
     TOKEN_KIND_FOR,
     TOKEN_KIND_SEMI_COLON,
     TOKEN_KIND_COLON_EQ,                    // :=
+    TOKEN_KIND_OPEN_BRACKET,
+    TOKEN_KIND_CLOSE_BRACKET,
     TOKEN_KIND_END
 } TokenKind;    
 

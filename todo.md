@@ -2,16 +2,18 @@
 
 [X] finish the parser
 
-[ ] finish the code generator
+[X] finish the code generator
 
-[ ] add an error logger !important
+[X] add an error logger !important
 
 [ ] add the possibility to configure the transpiler via a json file (coconfig.json)
 
-[ ] work on typechecking
+[X] work on typechecking
 
 [ ] construct the std libs in C
 
 [ ] work on oop things
 
 [X] check the function return type first, before you generate the code for it
+
+[ ] work on arrays

@@ -27,6 +27,8 @@ typedef struct {
     size_t size;
 } Body;
 
+typedef struct Type Type;
+
 typedef enum {
     PRE_DEFINED_TYPE_VOID = 0,
     PRE_DEFINED_TYPE_INT,
@@ -35,19 +37,25 @@ typedef enum {
     PRE_DEFINED_TYPE_COUNT
 } PreDefinedType;  
 
+typedef struct {
+    Type *of;
+} ArrayType;
+
 typedef enum {
     TYPE_KIND_NONE = 0,
     TYPE_KIND_PRE_DEFINED, 
+    TYPE_KIND_ARRAY,
 } TypeKind;
 
 typedef union {
     PreDefinedType predef;
+    ArrayType array;
 } TypeAs;
 
-typedef struct {
+struct Type {
     TypeKind kind;
     TypeAs as;
-} Type; 
+}; 
 
 typedef struct {
     Type type;
@@ -177,8 +185,12 @@ Expression *expras_integer(int integer);
 Expression *expras_funccall(FunctionCall funccall);
 Expression *expras_var(Variable var);
 
+
+// construct type: array of <of> 
+Type arrayof(Type of);
 Type typeas_predef(PreDefinedType predef);
 
 VariableDeclaration *vardec(Type type, SV name, Expression *value);
+
 
 #endif

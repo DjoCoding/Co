@@ -38,6 +38,7 @@ ContextVariable contextvar(VariableDeclaration var) {
     return (ContextVariable) {
         .name = var.name, 
         .type = var.type,
+        .isinitialized = var.expr != NULL,
     };
 }
 
@@ -205,22 +206,32 @@ void gcontext_pop(CodeGeneratorContext *this) {
 }
 
 Include include(SV name, bool isstd) {
-    return (Include) {
-        .name = name,
-        .isstd = isstd
-    };
-} 
+    Include inc = {0};
+    inc.isstd = isstd;
+    
+    if(isstd) { inc.as.std = name;}
+    else { inc.as.lib = colibfromname(name); } 
+
+    return inc;
+}
+
+SV include_name(Include inc) {
+    if(inc.isstd) { return (SV) inc.as.std; }
+    return svc((char *)headerof(inc.as.lib));       
+}
 
 Include *gcontext_findinclude(CodeGeneratorContext *this, SV name) {
     for(size_t i = 0; i < this->includes.count; ++i) {
         Include *inc = &this->includes.items[i];
-        if(svcmp(name, inc->name)) { return inc; }
+        if(svcmp(name, include_name(*inc))) {
+            return inc;
+        }
     }
     return NULL;
 }
 
 void gcontext_pushinclude(CodeGeneratorContext *this, Include inc) {
-    Include *isfound = gcontext_findinclude(this, inc.name);
+    Include *isfound = gcontext_findinclude(this, include_name(inc));
     if(isfound) { return; }
     APPEND(&this->includes, inc);
 }

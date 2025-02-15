@@ -25,6 +25,12 @@ void log_type(Type type) {
         }
     }
 
+    if(type.kind == TYPE_KIND_ARRAY) {
+        ArrayType arraytype = type.as.array;
+        printf("[]");
+        return log_type(*arraytype.of);
+    }
+
     assert(false && "not implemented yet");
 }
 

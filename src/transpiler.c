@@ -10,7 +10,11 @@ Transpiler *transpiler(const char *filename, const char *output) {
 
     t->l = lexer(filename);
     t->p = parser(filename);
-    t->c = code(filename, t->output);
+    
+    t->c = NULL;
+    if(output) {
+        t->c = code(filename, t->output);
+    }
 
     t->tokens = ARRAY(Token);
     t->tree = NULL;

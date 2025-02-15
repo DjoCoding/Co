@@ -6,7 +6,7 @@
 
 #define SV_NULL (SV) { .content = NULL, .count = 0 }
 #define SV_FMT       "%.*s"
-#define SV_UNWRAP(s) (int)s.count, s.content
+#define SV_UNWRAP(s) (int)(s).count, (s).content
 
 typedef struct {
     char *content;
